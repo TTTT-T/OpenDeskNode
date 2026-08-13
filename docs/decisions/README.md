@@ -1,11 +1,14 @@
 # 架构决策记录
 
-本目录只保存对未来有长期影响的技术决策。当前尚无业务架构决策；在真实决策出现前不创建占位 ADR。
+本目录只保存对未来有长期影响的技术决策。
 
 ## 决策索引
 
 | ID | 标题 | 状态 | 日期 | 影响范围 | 替代关系 |
 | --- | --- | --- | --- | --- | --- |
+| [0001](0001-xiaozhi-upstream-integration.md) | Xiaozhi 固件采用固定 release 的 Git subtree | Accepted | 2026-08-13 | 固件来源与升级 | 无 |
+| [0002](0002-product-and-stock-boundaries.md) | 产品层与统一 Stock Service 边界 | Accepted | 2026-08-13 | 固件、后端、数据一致性 | 无 |
+| [0003](0003-v1-voice-pipeline.md) | v1 采用 Xiaozhi ASR → GPT → TTS | Accepted | 2026-08-13 | 语音与 OpenAI 集成 | 无 |
 
 有效状态包括：`Proposed`、`Accepted`、`Superseded`、`Deprecated`、`Rejected`。实现时只把 `Accepted` 且未被替代的记录视为约束。
 
