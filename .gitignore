@@ -1,0 +1,16 @@
+# Local toolchains and generated build output
+.tools/
+firmware/xiaozhi/build/
+firmware/xiaozhi/managed_components/
+firmware/xiaozhi/sdkconfig
+firmware/xiaozhi/sdkconfig.old
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+data/.config.yaml
+
+# macOS and editor state
+.DS_Store
+.vscode/settings.json
