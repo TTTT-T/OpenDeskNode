@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "observation_date": "2026-08-15",
+  "intraday_request_date": "2026-08-14",
+  "timezone": "Asia/Shanghai",
+  "symbols": [
+    "600519",
+    "000001",
+    "300750",
+    "688981"
+  ],
+  "quote_repeats": 3,
+  "intraday_repeats": 3,
+  "delay_seconds": 1.0,
+  "intraday_delay_seconds": 1.0,
+  "intraday_period": "1",
+  "providers": [
+    "akshare-eastmoney",
+    "adata-sina",
+    "adata-tencent",
+    "easyquotation-sina",
+    "easyquotation-tencent",
+    "baidu-direct"
+  ],
+  "authentication": {
+    "token_required": false,
+    "token_present": false
+  },
+  "install": {
+    "command": "python3 -m pip install -r config/phase-01d0-provider-bakeoff-requirements.txt",
+    "environment": "/tmp/esp32-phase-01d0-venv"
+  }
+}

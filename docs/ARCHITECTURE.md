@@ -14,7 +14,8 @@ firmware/product
 ├─ components/
 │  ├─ board/            Waveshare GPIO 与 BOOT 键
 │  ├─ display/          ST7305 RLCD + LVGL 最小页面
-│  └─ network/          NVS、event loop、Wi-Fi station/最小配网
+│  ├─ network/          NVS、event loop、Wi-Fi station/最小配网
+│  └─ stock/            Phase 1C model/mock/view/service 与 host test
 ├─ partitions.csv       16 MB Flash、单 factory app、无 OTA
 └─ sdkconfig.defaults   ESP32-S3、octal 8 MB PSRAM、DIO 80 MHz
 ```
@@ -25,9 +26,41 @@ firmware/product
 app_main
   ├─ flash / PSRAM runtime check
   ├─ display_init → esp_lcd SPI → ST7305 → LVGL clean page
+  ├─ stock_service_start → stock_svc task（8192 B 栈预算：view 创建、
+  │  mock reset、首屏刷新 → 约 10 秒确定性轮换与指标日志）
   ├─ board_button_init → GPIO ISR → debounced event callback
   └─ network_init → NVS + netif + event loop → Wi-Fi station
 ```
+
+Phase 1C 的当前工作树实现把股票显示限制在 `components/stock/`：`stock_model.c`
+和 `stock_mock.c` 保持纯 C99、可在主机编译；`stock_view.c` 只通过 display
+组件持有的 LVGL 锁创建/更新 2×2 面板；`stock_service.c` 的 service task 在
+其明确栈预算内完成 view 创建、mock reset 与首屏更新，并负责约 10 秒的
+确定性 mock 场景轮换和刷新指标日志。display 组件只提供 RLCD
+传输、LVGL 锁和全帧刷新指标，不承载股票业务模型。
+
+Phase 1C 已由 commit `c2031a7` 完成并验收。启动边界已是 task-owned：
+view 创建、mock reset 与首屏刷新都在具有明确栈预算（8192 字节）的 stock
+service task 内执行，`app_main()` 只负责启动 service，main task 不创建/
+刷新股票 UI，main task 栈未增大。真机串口、显示、内存与完整循环证据见
+[Phase 1C 报告](phase-reports/phase-01c-stock-display-skeleton.md)。
+
+## Phase 1D.0 Provider 边界
+
+Phase 1D.0 只定义可复用的服务端 Provider 边界并完成候选数据源实测，不实现
+完整 Stock Gateway、cache、watchlist、web 管理或复杂 routing。唯一依赖方向为：
+
+```text
+Stock Service → StockProvider adapter
+                  ├─ resolve_symbol(symbol)
+                  ├─ get_quotes(symbols)
+                  └─ get_intraday(symbol, trading_date, ...)
+```
+
+`gateway/stock_provider/` 内的 adapter 负责 provider-specific symbol、字段和
+时间格式转换；跨 provider 的 canonical `Quote` / `IntradayBar` 不泄漏原始
+字段。Provider 与行情凭据仍只存在服务端，ESP32 只访问后续的自有 LAN
+Gateway。
 
 ## 网络边界
 

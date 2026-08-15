@@ -23,6 +23,14 @@
    - 先完成 1C/1D/1E 的股票显示链路，再推进 Voice 2A/2B/2C。
 6. **看板刷新目标约 10 秒**（用户已确认产品目标，见 [PRODUCT_REQUIREMENTS.md](PRODUCT_REQUIREMENTS.md)）
    - 最终节奏由数据源配额与 Phase 1E 真机实测微调；不为更快刷新预做 partial update 等复杂化。
+7. **Phase 1C 先用确定性 mock 打通显示链路**（当前 Phase 实现边界）
+   - `firmware/product/components/stock/` 拥有纯 C99 的 stock model/mock、LVGL view、刷新 service 和 host test；不接入真实行情、Stock Gateway 或网络凭据。
+   - display 组件只负责 ST7305/LVGL transport、锁和全帧刷新指标；股票业务不得进入 Board、ST7305 或其他底层驱动。
+   - 首屏 view 创建、mock reset 和第一次刷新必须运行在有明确栈预算的 stock service task 中；commit `c2031a7` 已按该边界重新烧录并完成真机验收（`app_main` 只启动 service，main task 不触碰股票 UI，main 栈未增大）。
+8. **Phase 1D.0 使用最小可复用 Provider 边界**（用户已确认的 Gateway 要求）
+   - Stock Service 只依赖 `resolve_symbol`、`get_quotes`、`get_intraday` 三项 Provider 操作；不把候选库的原始字段或调用方式泄漏到上层。
+   - 每个 adapter 在边界内把 provider-specific symbol、字段和时间转换为 canonical `Quote` / `IntradayBar`；本阶段不实现完整 Gateway、cache、watchlist、web 管理或复杂 routing。
+   - Provider 与行情凭据只存在服务端，ESP32 仍不直连行情 Provider。
 
 ## 已被替代（仅历史）
 

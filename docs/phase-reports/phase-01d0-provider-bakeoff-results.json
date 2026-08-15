@@ -1,0 +1,2891 @@
+{
+  "assessment": {
+    "intraday_request_date": "2026-08-14",
+    "limit_or_suspended_hit_validated": false,
+    "linux_nas_docker_validated": true,
+    "non_trading_day_intraday_gate": "passed",
+    "recommended_combination": {
+      "intraday_supplementary": "baidu-direct",
+      "quote_fallback": "adata-sina",
+      "quote_primary": "easyquotation-tencent"
+    },
+    "trade_session_realtime_validated": false
+  },
+  "nas_docker_validation": {
+    "docker_version": "27.1.2-qnap8",
+    "easyquotation_install": "passed_after_one_pypi_read_timeout_retry",
+    "host": "TerrenceNAS",
+    "image": "python:3.11-slim",
+    "image_digest": "sha256:a630a63cdb314e2d138a2fca3e375e319e8568346ffafac5b980f888630ac4f1",
+    "intraday_counts": {
+      "000001": 240,
+      "300750": 240,
+      "600519": 240,
+      "688981": 240
+    },
+    "observed_at": "2026-08-15T23:12:41+08:00",
+    "platform": "Linux x86_64",
+    "quote_count": 4,
+    "temporary_container": true,
+    "unit_tests": "10/10 passed"
+  },
+  "environment": {
+    "docker_available": false,
+    "docker_command": null,
+    "linux_tested": false,
+    "machine": "arm64",
+    "nas_docker_tested": false,
+    "package_versions": {
+      "adata": "2.9.5",
+      "akshare": "1.18.88",
+      "easyquotation": "0.7.7"
+    },
+    "platform": "macOS-26.6.1-arm64-arm-64bit",
+    "python": "3.9.6",
+    "system": "Darwin"
+  },
+  "providers": [
+    {
+      "capabilities": {
+        "get_intraday": false,
+        "get_quotes": false,
+        "resolve_symbol": true
+      },
+      "intraday": [
+        {
+          "requested_date": "2026-08-14",
+          "runs": [
+            {
+              "error": {
+                "message": "AKShare/Eastmoney intraday request failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+                "rate_limit_marker": false,
+                "type": "ProviderError"
+              },
+              "latency_ms": 187.8,
+              "ok": false,
+              "raw_columns": [],
+              "run": 1
+            },
+            {
+              "error": {
+                "message": "AKShare/Eastmoney intraday request failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+                "rate_limit_marker": false,
+                "type": "ProviderError"
+              },
+              "latency_ms": 202.3,
+              "ok": false,
+              "raw_columns": [],
+              "run": 2
+            }
+          ],
+          "successful_runs": 0,
+          "symbol": "600519"
+        }
+      ],
+      "name": "akshare-eastmoney",
+      "notes": [
+        "quote polling stopped after two consecutive failures",
+        "intraday polling stopped after two consecutive failures"
+      ],
+      "quote_runs": [
+        {
+          "error": {
+            "message": "AKShare/Eastmoney quote request failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+            "rate_limit_marker": false,
+            "type": "ProviderError"
+          },
+          "latency_ms": 8627.7,
+          "ok": false,
+          "raw_columns": [],
+          "run": 1
+        },
+        {
+          "error": {
+            "message": "AKShare/Eastmoney quote request failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+            "rate_limit_marker": false,
+            "type": "ProviderError"
+          },
+          "latency_ms": 6909.5,
+          "ok": false,
+          "raw_columns": [],
+          "run": 2
+        }
+      ],
+      "quote_stability": {
+        "coverage_complete_runs": 0,
+        "requested_symbols": [
+          "600519",
+          "000001",
+          "300750",
+          "688981"
+        ],
+        "same_canonical_values_across_successful_runs": false,
+        "successful_runs": 0
+      },
+      "rate_limit_marker_observed": false,
+      "resolve": [
+        {
+          "latency_ms": 7610.5,
+          "ok": true,
+          "symbol": "600519",
+          "value": {
+            "code": "600519",
+            "exchange": "SSE",
+            "name": "贵州茅台",
+            "provider_symbol": "600519"
+          }
+        },
+        {
+          "latency_ms": 0.1,
+          "ok": true,
+          "symbol": "000001",
+          "value": {
+            "code": "000001",
+            "exchange": "SZSE",
+            "name": "平安银行",
+            "provider_symbol": "000001"
+          }
+        },
+        {
+          "latency_ms": 1.3,
+          "ok": true,
+          "symbol": "300750",
+          "value": {
+            "code": "300750",
+            "exchange": "SZSE",
+            "name": "宁德时代",
+            "provider_symbol": "300750"
+          }
+        },
+        {
+          "latency_ms": 4.1,
+          "ok": true,
+          "symbol": "688981",
+          "value": {
+            "code": "688981",
+            "exchange": "SSE",
+            "name": "中芯国际",
+            "provider_symbol": "688981"
+          }
+        }
+      ],
+      "source": "Eastmoney via AKShare"
+    },
+    {
+      "capabilities": {
+        "get_intraday": false,
+        "get_quotes": true,
+        "resolve_symbol": true
+      },
+      "intraday": [
+        {
+          "requested_date": "2026-08-14",
+          "runs": [
+            {
+              "error": {
+                "message": "adata/sina intraday returned None (library handler hid the upstream error)",
+                "rate_limit_marker": false,
+                "type": "ProviderError"
+              },
+              "latency_ms": 0.0,
+              "ok": false,
+              "raw_columns": [],
+              "run": 1
+            },
+            {
+              "error": {
+                "message": "adata/sina intraday returned None (library handler hid the upstream error)",
+                "rate_limit_marker": false,
+                "type": "ProviderError"
+              },
+              "latency_ms": 0.1,
+              "ok": false,
+              "raw_columns": [],
+              "run": 2
+            }
+          ],
+          "successful_runs": 0,
+          "symbol": "600519"
+        }
+      ],
+      "name": "adata-sina",
+      "notes": [
+        "intraday polling stopped after two consecutive failures"
+      ],
+      "quote_runs": [
+        {
+          "latency_ms": 252.1,
+          "ok": true,
+          "raw_columns": [
+            "stock_code",
+            "short_name",
+            "price",
+            "change",
+            "change_pct",
+            "volume",
+            "amount"
+          ],
+          "run": 1,
+          "summary": {
+            "codes": [
+              "600519",
+              "000001",
+              "300750",
+              "688981"
+            ],
+            "count": 4,
+            "coverage_complete": true,
+            "limit_down_present": 0,
+            "limit_up_present": 0,
+            "names_present": 4,
+            "previous_close_present": 4,
+            "quotes": [
+              {
+                "change": -13.3,
+                "change_percent": -0.98,
+                "code": "600519",
+                "limit_down": null,
+                "limit_up": null,
+                "name": "贵州茅台",
+                "previous_close": 1355.29,
+                "price": 1341.99,
+                "source": "Sina via adata",
+                "status": "UNKNOWN",
+                "timestamp": null
+              },
+              {
+                "change": -0.14,
+                "change_percent": -1.24,
+                "code": "000001",
+                "limit_down": null,
+                "limit_up": null,
+                "name": "平安银行",
+                "previous_close": 11.25,
+                "price": 11.11,
+                "source": "Sina via adata",
+                "status": "UNKNOWN",
+                "timestamp": null
+              },
+              {
+                "change": -2.37,
+                "change_percent": -0.6,
+                "code": "300750",
+                "limit_down": null,
+                "limit_up": null,
+                "name": "宁德时代",
+                "previous_close": 396.3,
+                "price": 393.93,
+                "source": "Sina via adata",
+                "status": "UNKNOWN",
+                "timestamp": null
+              },
+              {
+                "change": 3.43,
+                "change_percent": 2.65,
+                "code": "688981",
+                "limit_down": null,
+                "limit_up": null,
+                "name": "中芯国际",
+                "previous_close": 129.44,
+                "price": 132.87,
+                "source": "Sina via adata",
+                "status": "UNKNOWN",
+                "timestamp": null
+              }
+            ],
+            "requested_count": 4,
+            "statuses": [
+              "UNKNOWN"
+            ],
+            "timestamps_present": 0
+          }
+        },
+        {
+          "latency_ms": 118.3,
+          "ok": true,
+          "raw_columns": [
+            "stock_code",
+            "short_name",
+            "price",
+            "change",
+            "change_pct",
+            "volume",
+            "amount"
+          ],
+          "run": 2,
+          "summary": {
+            "codes": [
+              "600519",
+              "000001",
+              "300750",
+              "688981"
+            ],
+            "count": 4,
+            "coverage_complete": true,
+            "limit_down_present": 0,
+            "limit_up_present": 0,
+            "names_present": 4,
+            "previous_close_present": 4,
+            "quotes": [
+              {
+                "change": -13.3,
+                "change_percent": -0.98,
+                "code": "600519",
+                "limit_down": null,
+                "limit_up": null,
+                "name": "贵州茅台",
+                "previous_close": 1355.29,
+                "price": 1341.99,
+                "source": "Sina via adata",
+                "status": "UNKNOWN",
+                "timestamp": null
+              },
+              {
+                "change": -0.14,
+                "change_percent": -1.24,
+                "code": "000001",
+                "limit_down": null,
+                "limit_up": null,
+                "name": "平安银行",
+                "previous_close": 11.25,
+                "price": 11.11,
+                "source": "Sina via adata",
+                "status": "UNKNOWN",
+                "timestamp": null
+              },
+              {
+                "change": -2.37,
+                "change_percent": -0.6,
+                "code": "300750",
+                "limit_down": null,
+                "limit_up": null,
+                "name": "宁德时代",
+                "previous_close": 396.3,
+                "price": 393.93,
+                "source": "Sina via adata",
+                "status": "UNKNOWN",
+                "timestamp": null
+              },
+              {
+                "change": 3.43,
+                "change_percent": 2.65,
+                "code": "688981",
+                "limit_down": null,
+                "limit_up": null,
+                "name": "中芯国际",
+                "previous_close": 129.44,
+                "price": 132.87,
+                "source": "Sina via adata",
+                "status": "UNKNOWN",
+                "timestamp": null
+              }
+            ],
+            "requested_count": 4,
+            "statuses": [
+              "UNKNOWN"
+            ],
+            "timestamps_present": 0
+          }
+        },
+        {
+          "latency_ms": 96.6,
+          "ok": true,
+          "raw_columns": [
+            "stock_code",
+            "short_name",
+            "price",
+            "change",
+            "change_pct",
+            "volume",
+            "amount"
+          ],
+          "run": 3,
+          "summary": {
+            "codes": [
+              "600519",
+              "000001",
+              "300750",
+              "688981"
+            ],
+            "count": 4,
+            "coverage_complete": true,
+            "limit_down_present": 0,
+            "limit_up_present": 0,
+            "names_present": 4,
+            "previous_close_present": 4,
+            "quotes": [
+              {
+                "change": -13.3,
+                "change_percent": -0.98,
+                "code": "600519",
+                "limit_down": null,
+                "limit_up": null,
+                "name": "贵州茅台",
+                "previous_close": 1355.29,
+                "price": 1341.99,
+                "source": "Sina via adata",
+                "status": "UNKNOWN",
+                "timestamp": null
+              },
+              {
+                "change": -0.14,
+                "change_percent": -1.24,
+                "code": "000001",
+                "limit_down": null,
+                "limit_up": null,
+                "name": "平安银行",
+                "previous_close": 11.25,
+                "price": 11.11,
+                "source": "Sina via adata",
+                "status": "UNKNOWN",
+                "timestamp": null
+              },
+              {
+                "change": -2.37,
+                "change_percent": -0.6,
+                "code": "300750",
+                "limit_down": null,
+                "limit_up": null,
+                "name": "宁德时代",
+                "previous_close": 396.3,
+                "price": 393.93,
+                "source": "Sina via adata",
+                "status": "UNKNOWN",
+                "timestamp": null
+              },
+              {
+                "change": 3.43,
+                "change_percent": 2.65,
+                "code": "688981",
+                "limit_down": null,
+                "limit_up": null,
+                "name": "中芯国际",
+                "previous_close": 129.44,
+                "price": 132.87,
+                "source": "Sina via adata",
+                "status": "UNKNOWN",
+                "timestamp": null
+              }
+            ],
+            "requested_count": 4,
+            "statuses": [
+              "UNKNOWN"
+            ],
+            "timestamps_present": 0
+          }
+        }
+      ],
+      "quote_stability": {
+        "coverage_complete_runs": 3,
+        "requested_symbols": [
+          "600519",
+          "000001",
+          "300750",
+          "688981"
+        ],
+        "same_canonical_values_across_successful_runs": true,
+        "successful_runs": 3
+      },
+      "rate_limit_marker_observed": false,
+      "resolve": [
+        {
+          "latency_ms": 0.0,
+          "ok": true,
+          "symbol": "600519",
+          "value": {
+            "code": "600519",
+            "exchange": "SSE",
+            "name": null,
+            "provider_symbol": "600519"
+          }
+        },
+        {
+          "latency_ms": 0.1,
+          "ok": true,
+          "symbol": "000001",
+          "value": {
+            "code": "000001",
+            "exchange": "SZSE",
+            "name": null,
+            "provider_symbol": "000001"
+          }
+        },
+        {
+          "latency_ms": 0.1,
+          "ok": true,
+          "symbol": "300750",
+          "value": {
+            "code": "300750",
+            "exchange": "SZSE",
+            "name": null,
+            "provider_symbol": "300750"
+          }
+        },
+        {
+          "latency_ms": 0.1,
+          "ok": true,
+          "symbol": "688981",
+          "value": {
+            "code": "688981",
+            "exchange": "SSE",
+            "name": null,
+            "provider_symbol": "688981"
+          }
+        }
+      ],
+      "source": "Sina via adata"
+    },
+    {
+      "capabilities": {
+        "get_intraday": false,
+        "get_quotes": false,
+        "resolve_symbol": true
+      },
+      "intraday": [
+        {
+          "requested_date": "2026-08-14",
+          "runs": [
+            {
+              "error": {
+                "message": "adata/tencent intraday returned None (library handler hid the upstream error)",
+                "rate_limit_marker": false,
+                "type": "ProviderError"
+              },
+              "latency_ms": 0.0,
+              "ok": false,
+              "raw_columns": [],
+              "run": 1
+            },
+            {
+              "error": {
+                "message": "adata/tencent intraday returned None (library handler hid the upstream error)",
+                "rate_limit_marker": false,
+                "type": "ProviderError"
+              },
+              "latency_ms": 0.1,
+              "ok": false,
+              "raw_columns": [],
+              "run": 2
+            }
+          ],
+          "successful_runs": 0,
+          "symbol": "600519"
+        }
+      ],
+      "name": "adata-tencent",
+      "notes": [
+        "quote polling stopped after two consecutive failures",
+        "intraday polling stopped after two consecutive failures"
+      ],
+      "quote_runs": [
+        {
+          "error": {
+            "message": "empty canonical quote response",
+            "rate_limit_marker": false,
+            "type": "RuntimeError"
+          },
+          "latency_ms": 238.0,
+          "ok": false,
+          "raw_columns": [
+            "stock_code",
+            "short_name",
+            "price",
+            "change",
+            "change_pct",
+            "volume",
+            "amount"
+          ],
+          "run": 1
+        },
+        {
+          "error": {
+            "message": "empty canonical quote response",
+            "rate_limit_marker": false,
+            "type": "RuntimeError"
+          },
+          "latency_ms": 198.9,
+          "ok": false,
+          "raw_columns": [
+            "stock_code",
+            "short_name",
+            "price",
+            "change",
+            "change_pct",
+            "volume",
+            "amount"
+          ],
+          "run": 2
+        }
+      ],
+      "quote_stability": {
+        "coverage_complete_runs": 0,
+        "requested_symbols": [
+          "600519",
+          "000001",
+          "300750",
+          "688981"
+        ],
+        "same_canonical_values_across_successful_runs": false,
+        "successful_runs": 0
+      },
+      "rate_limit_marker_observed": false,
+      "resolve": [
+        {
+          "latency_ms": 0.0,
+          "ok": true,
+          "symbol": "600519",
+          "value": {
+            "code": "600519",
+            "exchange": "SSE",
+            "name": null,
+            "provider_symbol": "600519"
+          }
+        },
+        {
+          "latency_ms": 0.1,
+          "ok": true,
+          "symbol": "000001",
+          "value": {
+            "code": "000001",
+            "exchange": "SZSE",
+            "name": null,
+            "provider_symbol": "000001"
+          }
+        },
+        {
+          "latency_ms": 0.0,
+          "ok": true,
+          "symbol": "300750",
+          "value": {
+            "code": "300750",
+            "exchange": "SZSE",
+            "name": null,
+            "provider_symbol": "300750"
+          }
+        },
+        {
+          "latency_ms": 0.1,
+          "ok": true,
+          "symbol": "688981",
+          "value": {
+            "code": "688981",
+            "exchange": "SSE",
+            "name": null,
+            "provider_symbol": "688981"
+          }
+        }
+      ],
+      "source": "Tencent via adata"
+    },
+    {
+      "capabilities": {
+        "get_intraday": false,
+        "get_quotes": true,
+        "resolve_symbol": true
+      },
+      "intraday": [
+        {
+          "requested_date": "2026-08-14",
+          "runs": [
+            {
+              "capability": false,
+              "error": {
+                "message": "easyquotation/sina exposes quote fields only; no current one-minute adapter",
+                "rate_limit_marker": false,
+                "type": "ProviderCapabilityError"
+              },
+              "latency_ms": 0.0,
+              "ok": false,
+              "run": 1
+            }
+          ],
+          "successful_runs": 0,
+          "symbol": "600519"
+        }
+      ],
+      "name": "easyquotation-sina",
+      "notes": [
+        "intraday stopped because the candidate lacks this capability"
+      ],
+      "quote_runs": [
+        {
+          "latency_ms": 85.3,
+          "ok": true,
+          "raw_columns": [
+            "ask1",
+            "ask1_volume",
+            "ask2",
+            "ask2_volume",
+            "ask3",
+            "ask3_volume",
+            "ask4",
+            "ask4_volume",
+            "ask5",
+            "ask5_volume",
+            "bid1",
+            "bid1_volume",
+            "bid2",
+            "bid2_volume",
+            "bid3",
+            "bid3_volume",
+            "bid4",
+            "bid4_volume",
+            "bid5",
+            "bid5_volume",
+            "buy",
+            "close",
+            "date",
+            "high",
+            "low",
+            "name",
+            "now",
+            "open",
+            "sell",
+            "time",
+            "turnover",
+            "volume"
+          ],
+          "run": 1,
+          "summary": {
+            "codes": [
+              "600519",
+              "000001",
+              "300750",
+              "688981"
+            ],
+            "count": 4,
+            "coverage_complete": true,
+            "limit_down_present": 0,
+            "limit_up_present": 0,
+            "names_present": 4,
+            "previous_close_present": 4,
+            "quotes": [
+              {
+                "change": -13.299999999999955,
+                "change_percent": -0.9813397870566414,
+                "code": "600519",
+                "limit_down": null,
+                "limit_up": null,
+                "name": "贵州茅台",
+                "previous_close": 1355.29,
+                "price": 1341.99,
+                "source": "Sina via easyquotation",
+                "status": "UNKNOWN",
+                "timestamp": "2026-08-14T15:34:56+08:00"
+              },
+              {
+                "change": -0.14000000000000057,
+                "change_percent": -1.2444444444444496,
+                "code": "000001",
+                "limit_down": null,
+                "limit_up": null,
+                "name": "平安银行",
+                "previous_close": 11.25,
+                "price": 11.11,
+                "source": "Sina via easyquotation",
+                "status": "UNKNOWN",
+                "timestamp": "2026-08-14T15:45:00+08:00"
+              },
+              {
+                "change": -2.3700000000000045,
+                "change_percent": -0.5980317940953834,
+                "code": "300750",
+                "limit_down": null,
+                "limit_up": null,
+                "name": "宁德时代",
+                "previous_close": 396.3,
+                "price": 393.93,
+                "source": "Sina via easyquotation",
+                "status": "UNKNOWN",
+                "timestamp": "2026-08-14T15:44:45+08:00"
+              },
+              {
+                "change": 3.430000000000007,
+                "change_percent": 2.6498763906056917,
+                "code": "688981",
+                "limit_down": null,
+                "limit_up": null,
+                "name": "中芯国际",
+                "previous_close": 129.44,
+                "price": 132.87,
+                "source": "Sina via easyquotation",
+                "status": "UNKNOWN",
+                "timestamp": "2026-08-14T15:34:56+08:00"
+              }
+            ],
+            "requested_count": 4,
+            "statuses": [
+              "UNKNOWN"
+            ],
+            "timestamps_present": 4
+          }
+        },
+        {
+          "latency_ms": 63.9,
+          "ok": true,
+          "raw_columns": [
+            "ask1",
+            "ask1_volume",
+            "ask2",
+            "ask2_volume",
+            "ask3",
+            "ask3_volume",
+            "ask4",
+            "ask4_volume",
+            "ask5",
+            "ask5_volume",
+            "bid1",
+            "bid1_volume",
+            "bid2",
+            "bid2_volume",
+            "bid3",
+            "bid3_volume",
+            "bid4",
+            "bid4_volume",
+            "bid5",
+            "bid5_volume",
+            "buy",
+            "close",
+            "date",
+            "high",
+            "low",
+            "name",
+            "now",
+            "open",
+            "sell",
+            "time",
+            "turnover",
+            "volume"
+          ],
+          "run": 2,
+          "summary": {
+            "codes": [
+              "600519",
+              "000001",
+              "300750",
+              "688981"
+            ],
+            "count": 4,
+            "coverage_complete": true,
+            "limit_down_present": 0,
+            "limit_up_present": 0,
+            "names_present": 4,
+            "previous_close_present": 4,
+            "quotes": [
+              {
+                "change": -13.299999999999955,
+                "change_percent": -0.9813397870566414,
+                "code": "600519",
+                "limit_down": null,
+                "limit_up": null,
+                "name": "贵州茅台",
+                "previous_close": 1355.29,
+                "price": 1341.99,
+                "source": "Sina via easyquotation",
+                "status": "UNKNOWN",
+                "timestamp": "2026-08-14T15:34:56+08:00"
+              },
+              {
+                "change": -0.14000000000000057,
+                "change_percent": -1.2444444444444496,
+                "code": "000001",
+                "limit_down": null,
+                "limit_up": null,
+                "name": "平安银行",
+                "previous_close": 11.25,
+                "price": 11.11,
+                "source": "Sina via easyquotation",
+                "status": "UNKNOWN",
+                "timestamp": "2026-08-14T15:45:00+08:00"
+              },
+              {
+                "change": -2.3700000000000045,
+                "change_percent": -0.5980317940953834,
+                "code": "300750",
+                "limit_down": null,
+                "limit_up": null,
+                "name": "宁德时代",
+                "previous_close": 396.3,
+                "price": 393.93,
+                "source": "Sina via easyquotation",
+                "status": "UNKNOWN",
+                "timestamp": "2026-08-14T15:44:45+08:00"
+              },
+              {
+                "change": 3.430000000000007,
+                "change_percent": 2.6498763906056917,
+                "code": "688981",
+                "limit_down": null,
+                "limit_up": null,
+                "name": "中芯国际",
+                "previous_close": 129.44,
+                "price": 132.87,
+                "source": "Sina via easyquotation",
+                "status": "UNKNOWN",
+                "timestamp": "2026-08-14T15:34:56+08:00"
+              }
+            ],
+            "requested_count": 4,
+            "statuses": [
+              "UNKNOWN"
+            ],
+            "timestamps_present": 4
+          }
+        },
+        {
+          "latency_ms": 61.0,
+          "ok": true,
+          "raw_columns": [
+            "ask1",
+            "ask1_volume",
+            "ask2",
+            "ask2_volume",
+            "ask3",
+            "ask3_volume",
+            "ask4",
+            "ask4_volume",
+            "ask5",
+            "ask5_volume",
+            "bid1",
+            "bid1_volume",
+            "bid2",
+            "bid2_volume",
+            "bid3",
+            "bid3_volume",
+            "bid4",
+            "bid4_volume",
+            "bid5",
+            "bid5_volume",
+            "buy",
+            "close",
+            "date",
+            "high",
+            "low",
+            "name",
+            "now",
+            "open",
+            "sell",
+            "time",
+            "turnover",
+            "volume"
+          ],
+          "run": 3,
+          "summary": {
+            "codes": [
+              "600519",
+              "000001",
+              "300750",
+              "688981"
+            ],
+            "count": 4,
+            "coverage_complete": true,
+            "limit_down_present": 0,
+            "limit_up_present": 0,
+            "names_present": 4,
+            "previous_close_present": 4,
+            "quotes": [
+              {
+                "change": -13.299999999999955,
+                "change_percent": -0.9813397870566414,
+                "code": "600519",
+                "limit_down": null,
+                "limit_up": null,
+                "name": "贵州茅台",
+                "previous_close": 1355.29,
+                "price": 1341.99,
+                "source": "Sina via easyquotation",
+                "status": "UNKNOWN",
+                "timestamp": "2026-08-14T15:34:56+08:00"
+              },
+              {
+                "change": -0.14000000000000057,
+                "change_percent": -1.2444444444444496,
+                "code": "000001",
+                "limit_down": null,
+                "limit_up": null,
+                "name": "平安银行",
+                "previous_close": 11.25,
+                "price": 11.11,
+                "source": "Sina via easyquotation",
+                "status": "UNKNOWN",
+                "timestamp": "2026-08-14T15:45:00+08:00"
+              },
+              {
+                "change": -2.3700000000000045,
+                "change_percent": -0.5980317940953834,
+                "code": "300750",
+                "limit_down": null,
+                "limit_up": null,
+                "name": "宁德时代",
+                "previous_close": 396.3,
+                "price": 393.93,
+                "source": "Sina via easyquotation",
+                "status": "UNKNOWN",
+                "timestamp": "2026-08-14T15:44:45+08:00"
+              },
+              {
+                "change": 3.430000000000007,
+                "change_percent": 2.6498763906056917,
+                "code": "688981",
+                "limit_down": null,
+                "limit_up": null,
+                "name": "中芯国际",
+                "previous_close": 129.44,
+                "price": 132.87,
+                "source": "Sina via easyquotation",
+                "status": "UNKNOWN",
+                "timestamp": "2026-08-14T15:34:56+08:00"
+              }
+            ],
+            "requested_count": 4,
+            "statuses": [
+              "UNKNOWN"
+            ],
+            "timestamps_present": 4
+          }
+        }
+      ],
+      "quote_stability": {
+        "coverage_complete_runs": 3,
+        "requested_symbols": [
+          "600519",
+          "000001",
+          "300750",
+          "688981"
+        ],
+        "same_canonical_values_across_successful_runs": true,
+        "successful_runs": 3
+      },
+      "rate_limit_marker_observed": false,
+      "resolve": [
+        {
+          "latency_ms": 0.0,
+          "ok": true,
+          "symbol": "600519",
+          "value": {
+            "code": "600519",
+            "exchange": "SSE",
+            "name": null,
+            "provider_symbol": "sh600519"
+          }
+        },
+        {
+          "latency_ms": 0.1,
+          "ok": true,
+          "symbol": "000001",
+          "value": {
+            "code": "000001",
+            "exchange": "SZSE",
+            "name": null,
+            "provider_symbol": "sz000001"
+          }
+        },
+        {
+          "latency_ms": 0.1,
+          "ok": true,
+          "symbol": "300750",
+          "value": {
+            "code": "300750",
+            "exchange": "SZSE",
+            "name": null,
+            "provider_symbol": "sz300750"
+          }
+        },
+        {
+          "latency_ms": 0.1,
+          "ok": true,
+          "symbol": "688981",
+          "value": {
+            "code": "688981",
+            "exchange": "SSE",
+            "name": null,
+            "provider_symbol": "sh688981"
+          }
+        }
+      ],
+      "source": "Sina via easyquotation"
+    },
+    {
+      "capabilities": {
+        "get_intraday": true,
+        "get_quotes": true,
+        "resolve_symbol": true
+      },
+      "intraday": [
+        {
+          "requested_date": "2026-08-14",
+          "runs": [
+            {
+              "latency_ms": 347.7,
+              "ok": true,
+              "raw_columns": [
+                "date",
+                "time_data"
+              ],
+              "run": 1,
+              "summary": {
+                "contains_requested_date": false,
+                "count": 205,
+                "date_consistent": false,
+                "first": {
+                  "amount": null,
+                  "close": 1822.42,
+                  "code": "600519",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 1822.42,
+                  "source": "Tencent timekline via easyquotation",
+                  "timestamp": "2021-10-08T09:30:00+08:00",
+                  "volume": 2098.0
+                },
+                "first_timestamp": "2021-10-08T09:30:00+08:00",
+                "last": {
+                  "amount": null,
+                  "close": 1841.0,
+                  "code": "600519",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 1841.0,
+                  "source": "Tencent timekline via easyquotation",
+                  "timestamp": "2021-10-08T14:23:00+08:00",
+                  "volume": 41255.0
+                },
+                "last_timestamp": "2021-10-08T14:23:00+08:00",
+                "observed_dates": [
+                  "2021-10-08"
+                ],
+                "requested_date": "2026-08-14",
+                "stale_date_observed": true
+              }
+            },
+            {
+              "latency_ms": 351.1,
+              "ok": true,
+              "raw_columns": [
+                "date",
+                "time_data"
+              ],
+              "run": 2,
+              "summary": {
+                "contains_requested_date": false,
+                "count": 205,
+                "date_consistent": false,
+                "first": {
+                  "amount": null,
+                  "close": 1822.42,
+                  "code": "600519",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 1822.42,
+                  "source": "Tencent timekline via easyquotation",
+                  "timestamp": "2021-10-08T09:30:00+08:00",
+                  "volume": 2098.0
+                },
+                "first_timestamp": "2021-10-08T09:30:00+08:00",
+                "last": {
+                  "amount": null,
+                  "close": 1841.0,
+                  "code": "600519",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 1841.0,
+                  "source": "Tencent timekline via easyquotation",
+                  "timestamp": "2021-10-08T14:23:00+08:00",
+                  "volume": 41255.0
+                },
+                "last_timestamp": "2021-10-08T14:23:00+08:00",
+                "observed_dates": [
+                  "2021-10-08"
+                ],
+                "requested_date": "2026-08-14",
+                "stale_date_observed": true
+              }
+            },
+            {
+              "latency_ms": 221.8,
+              "ok": true,
+              "raw_columns": [
+                "date",
+                "time_data"
+              ],
+              "run": 3,
+              "summary": {
+                "contains_requested_date": false,
+                "count": 205,
+                "date_consistent": false,
+                "first": {
+                  "amount": null,
+                  "close": 1822.42,
+                  "code": "600519",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 1822.42,
+                  "source": "Tencent timekline via easyquotation",
+                  "timestamp": "2021-10-08T09:30:00+08:00",
+                  "volume": 2098.0
+                },
+                "first_timestamp": "2021-10-08T09:30:00+08:00",
+                "last": {
+                  "amount": null,
+                  "close": 1841.0,
+                  "code": "600519",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 1841.0,
+                  "source": "Tencent timekline via easyquotation",
+                  "timestamp": "2021-10-08T14:23:00+08:00",
+                  "volume": 41255.0
+                },
+                "last_timestamp": "2021-10-08T14:23:00+08:00",
+                "observed_dates": [
+                  "2021-10-08"
+                ],
+                "requested_date": "2026-08-14",
+                "stale_date_observed": true
+              }
+            }
+          ],
+          "successful_runs": 3,
+          "symbol": "600519"
+        },
+        {
+          "requested_date": "2026-08-14",
+          "runs": [
+            {
+              "latency_ms": 210.5,
+              "ok": true,
+              "raw_columns": [
+                "date",
+                "time_data"
+              ],
+              "run": 1,
+              "summary": {
+                "contains_requested_date": false,
+                "count": 208,
+                "date_consistent": false,
+                "first": {
+                  "amount": null,
+                  "close": 18.17,
+                  "code": "000001",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 18.17,
+                  "source": "Tencent timekline via easyquotation",
+                  "timestamp": "2021-10-08T09:30:00+08:00",
+                  "volume": 69011.0
+                },
+                "first_timestamp": "2021-10-08T09:30:00+08:00",
+                "last": {
+                  "amount": null,
+                  "close": 18.61,
+                  "code": "000001",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 18.61,
+                  "source": "Tencent timekline via easyquotation",
+                  "timestamp": "2021-10-08T14:26:00+08:00",
+                  "volume": 1069071.0
+                },
+                "last_timestamp": "2021-10-08T14:26:00+08:00",
+                "observed_dates": [
+                  "2021-10-08"
+                ],
+                "requested_date": "2026-08-14",
+                "stale_date_observed": true
+              }
+            },
+            {
+              "latency_ms": 377.7,
+              "ok": true,
+              "raw_columns": [
+                "date",
+                "time_data"
+              ],
+              "run": 2,
+              "summary": {
+                "contains_requested_date": false,
+                "count": 208,
+                "date_consistent": false,
+                "first": {
+                  "amount": null,
+                  "close": 18.17,
+                  "code": "000001",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 18.17,
+                  "source": "Tencent timekline via easyquotation",
+                  "timestamp": "2021-10-08T09:30:00+08:00",
+                  "volume": 69011.0
+                },
+                "first_timestamp": "2021-10-08T09:30:00+08:00",
+                "last": {
+                  "amount": null,
+                  "close": 18.61,
+                  "code": "000001",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 18.61,
+                  "source": "Tencent timekline via easyquotation",
+                  "timestamp": "2021-10-08T14:26:00+08:00",
+                  "volume": 1069071.0
+                },
+                "last_timestamp": "2021-10-08T14:26:00+08:00",
+                "observed_dates": [
+                  "2021-10-08"
+                ],
+                "requested_date": "2026-08-14",
+                "stale_date_observed": true
+              }
+            },
+            {
+              "latency_ms": 368.9,
+              "ok": true,
+              "raw_columns": [
+                "date",
+                "time_data"
+              ],
+              "run": 3,
+              "summary": {
+                "contains_requested_date": false,
+                "count": 208,
+                "date_consistent": false,
+                "first": {
+                  "amount": null,
+                  "close": 18.17,
+                  "code": "000001",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 18.17,
+                  "source": "Tencent timekline via easyquotation",
+                  "timestamp": "2021-10-08T09:30:00+08:00",
+                  "volume": 69011.0
+                },
+                "first_timestamp": "2021-10-08T09:30:00+08:00",
+                "last": {
+                  "amount": null,
+                  "close": 18.61,
+                  "code": "000001",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 18.61,
+                  "source": "Tencent timekline via easyquotation",
+                  "timestamp": "2021-10-08T14:26:00+08:00",
+                  "volume": 1069071.0
+                },
+                "last_timestamp": "2021-10-08T14:26:00+08:00",
+                "observed_dates": [
+                  "2021-10-08"
+                ],
+                "requested_date": "2026-08-14",
+                "stale_date_observed": true
+              }
+            }
+          ],
+          "successful_runs": 3,
+          "symbol": "000001"
+        },
+        {
+          "requested_date": "2026-08-14",
+          "runs": [
+            {
+              "latency_ms": 281.8,
+              "ok": true,
+              "raw_columns": [
+                "date",
+                "time_data"
+              ],
+              "run": 1,
+              "summary": {
+                "contains_requested_date": false,
+                "count": 208,
+                "date_consistent": false,
+                "first": {
+                  "amount": null,
+                  "close": 534.0,
+                  "code": "300750",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 534.0,
+                  "source": "Tencent timekline via easyquotation",
+                  "timestamp": "2021-10-08T09:30:00+08:00",
+                  "volume": 8093.0
+                },
+                "first_timestamp": "2021-10-08T09:30:00+08:00",
+                "last": {
+                  "amount": null,
+                  "close": 528.91,
+                  "code": "300750",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 528.91,
+                  "source": "Tencent timekline via easyquotation",
+                  "timestamp": "2021-10-08T14:26:00+08:00",
+                  "volume": 113371.0
+                },
+                "last_timestamp": "2021-10-08T14:26:00+08:00",
+                "observed_dates": [
+                  "2021-10-08"
+                ],
+                "requested_date": "2026-08-14",
+                "stale_date_observed": true
+              }
+            },
+            {
+              "latency_ms": 282.3,
+              "ok": true,
+              "raw_columns": [
+                "date",
+                "time_data"
+              ],
+              "run": 2,
+              "summary": {
+                "contains_requested_date": false,
+                "count": 208,
+                "date_consistent": false,
+                "first": {
+                  "amount": null,
+                  "close": 534.0,
+                  "code": "300750",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 534.0,
+                  "source": "Tencent timekline via easyquotation",
+                  "timestamp": "2021-10-08T09:30:00+08:00",
+                  "volume": 8093.0
+                },
+                "first_timestamp": "2021-10-08T09:30:00+08:00",
+                "last": {
+                  "amount": null,
+                  "close": 528.91,
+                  "code": "300750",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 528.91,
+                  "source": "Tencent timekline via easyquotation",
+                  "timestamp": "2021-10-08T14:26:00+08:00",
+                  "volume": 113371.0
+                },
+                "last_timestamp": "2021-10-08T14:26:00+08:00",
+                "observed_dates": [
+                  "2021-10-08"
+                ],
+                "requested_date": "2026-08-14",
+                "stale_date_observed": true
+              }
+            },
+            {
+              "latency_ms": 296.4,
+              "ok": true,
+              "raw_columns": [
+                "date",
+                "time_data"
+              ],
+              "run": 3,
+              "summary": {
+                "contains_requested_date": false,
+                "count": 208,
+                "date_consistent": false,
+                "first": {
+                  "amount": null,
+                  "close": 534.0,
+                  "code": "300750",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 534.0,
+                  "source": "Tencent timekline via easyquotation",
+                  "timestamp": "2021-10-08T09:30:00+08:00",
+                  "volume": 8093.0
+                },
+                "first_timestamp": "2021-10-08T09:30:00+08:00",
+                "last": {
+                  "amount": null,
+                  "close": 528.91,
+                  "code": "300750",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 528.91,
+                  "source": "Tencent timekline via easyquotation",
+                  "timestamp": "2021-10-08T14:26:00+08:00",
+                  "volume": 113371.0
+                },
+                "last_timestamp": "2021-10-08T14:26:00+08:00",
+                "observed_dates": [
+                  "2021-10-08"
+                ],
+                "requested_date": "2026-08-14",
+                "stale_date_observed": true
+              }
+            }
+          ],
+          "successful_runs": 3,
+          "symbol": "300750"
+        },
+        {
+          "requested_date": "2026-08-14",
+          "runs": [
+            {
+              "latency_ms": 274.0,
+              "ok": true,
+              "raw_columns": [
+                "date",
+                "time_data"
+              ],
+              "run": 1,
+              "summary": {
+                "contains_requested_date": false,
+                "count": 205,
+                "date_consistent": false,
+                "first": {
+                  "amount": null,
+                  "close": 55.79,
+                  "code": "688981",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 55.79,
+                  "source": "Tencent timekline via easyquotation",
+                  "timestamp": "2021-10-08T09:30:00+08:00",
+                  "volume": 1022889.0
+                },
+                "first_timestamp": "2021-10-08T09:30:00+08:00",
+                "last": {
+                  "amount": null,
+                  "close": 55.53,
+                  "code": "688981",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 55.53,
+                  "source": "Tencent timekline via easyquotation",
+                  "timestamp": "2021-10-08T14:23:00+08:00",
+                  "volume": 15249821.0
+                },
+                "last_timestamp": "2021-10-08T14:23:00+08:00",
+                "observed_dates": [
+                  "2021-10-08"
+                ],
+                "requested_date": "2026-08-14",
+                "stale_date_observed": true
+              }
+            },
+            {
+              "latency_ms": 253.2,
+              "ok": true,
+              "raw_columns": [
+                "date",
+                "time_data"
+              ],
+              "run": 2,
+              "summary": {
+                "contains_requested_date": false,
+                "count": 205,
+                "date_consistent": false,
+                "first": {
+                  "amount": null,
+                  "close": 55.79,
+                  "code": "688981",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 55.79,
+                  "source": "Tencent timekline via easyquotation",
+                  "timestamp": "2021-10-08T09:30:00+08:00",
+                  "volume": 1022889.0
+                },
+                "first_timestamp": "2021-10-08T09:30:00+08:00",
+                "last": {
+                  "amount": null,
+                  "close": 55.53,
+                  "code": "688981",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 55.53,
+                  "source": "Tencent timekline via easyquotation",
+                  "timestamp": "2021-10-08T14:23:00+08:00",
+                  "volume": 15249821.0
+                },
+                "last_timestamp": "2021-10-08T14:23:00+08:00",
+                "observed_dates": [
+                  "2021-10-08"
+                ],
+                "requested_date": "2026-08-14",
+                "stale_date_observed": true
+              }
+            },
+            {
+              "latency_ms": 350.6,
+              "ok": true,
+              "raw_columns": [
+                "date",
+                "time_data"
+              ],
+              "run": 3,
+              "summary": {
+                "contains_requested_date": false,
+                "count": 205,
+                "date_consistent": false,
+                "first": {
+                  "amount": null,
+                  "close": 55.79,
+                  "code": "688981",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 55.79,
+                  "source": "Tencent timekline via easyquotation",
+                  "timestamp": "2021-10-08T09:30:00+08:00",
+                  "volume": 1022889.0
+                },
+                "first_timestamp": "2021-10-08T09:30:00+08:00",
+                "last": {
+                  "amount": null,
+                  "close": 55.53,
+                  "code": "688981",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 55.53,
+                  "source": "Tencent timekline via easyquotation",
+                  "timestamp": "2021-10-08T14:23:00+08:00",
+                  "volume": 15249821.0
+                },
+                "last_timestamp": "2021-10-08T14:23:00+08:00",
+                "observed_dates": [
+                  "2021-10-08"
+                ],
+                "requested_date": "2026-08-14",
+                "stale_date_observed": true
+              }
+            }
+          ],
+          "successful_runs": 3,
+          "symbol": "688981"
+        }
+      ],
+      "name": "easyquotation-tencent",
+      "notes": [],
+      "quote_runs": [
+        {
+          "latency_ms": 122.7,
+          "ok": true,
+          "raw_columns": [
+            "PB",
+            "PE",
+            "ask1",
+            "ask1_volume",
+            "ask2",
+            "ask2_volume",
+            "ask3",
+            "ask3_volume",
+            "ask4",
+            "ask4_volume",
+            "ask5",
+            "ask5_volume",
+            "ask_volume",
+            "bid1",
+            "bid1_volume",
+            "bid2",
+            "bid2_volume",
+            "bid3",
+            "bid3_volume",
+            "bid4",
+            "bid4_volume",
+            "bid5",
+            "bid5_volume",
+            "bid_volume",
+            "close",
+            "code",
+            "datetime",
+            "high",
+            "high_2",
+            "low",
+            "low_2",
+            "name",
+            "now",
+            "open",
+            "turnover",
+            "unknown",
+            "volume",
+            "价格/成交量(手)/成交额",
+            "均价",
+            "委差",
+            "市盈(动)",
+            "市盈(静)",
+            "总市值",
+            "成交量(手)",
+            "成交额(万)",
+            "振幅",
+            "最近逐笔成交",
+            "流通市值",
+            "涨停价",
+            "涨跌",
+            "涨跌(%)",
+            "跌停价",
+            "量比"
+          ],
+          "run": 1,
+          "summary": {
+            "codes": [
+              "600519",
+              "000001",
+              "300750",
+              "688981"
+            ],
+            "count": 4,
+            "coverage_complete": true,
+            "limit_down_present": 4,
+            "limit_up_present": 4,
+            "names_present": 4,
+            "previous_close_present": 4,
+            "quotes": [
+              {
+                "change": -13.3,
+                "change_percent": -0.98,
+                "code": "600519",
+                "limit_down": 1219.76,
+                "limit_up": 1490.82,
+                "name": "贵州茅台",
+                "previous_close": 1355.29,
+                "price": 1341.99,
+                "source": "Tencent via easyquotation",
+                "status": "NORMAL",
+                "timestamp": "2026-08-14T16:14:43+08:00"
+              },
+              {
+                "change": -0.14,
+                "change_percent": -1.24,
+                "code": "000001",
+                "limit_down": 10.13,
+                "limit_up": 12.38,
+                "name": "平安银行",
+                "previous_close": 11.25,
+                "price": 11.11,
+                "source": "Tencent via easyquotation",
+                "status": "NORMAL",
+                "timestamp": "2026-08-14T16:14:15+08:00"
+              },
+              {
+                "change": -2.37,
+                "change_percent": -0.6,
+                "code": "300750",
+                "limit_down": 317.04,
+                "limit_up": 475.56,
+                "name": "宁德时代",
+                "previous_close": 396.3,
+                "price": 393.93,
+                "source": "Tencent via easyquotation",
+                "status": "NORMAL",
+                "timestamp": "2026-08-14T16:14:00+08:00"
+              },
+              {
+                "change": 3.43,
+                "change_percent": 2.65,
+                "code": "688981",
+                "limit_down": 103.55,
+                "limit_up": 155.33,
+                "name": "中芯国际",
+                "previous_close": 129.44,
+                "price": 132.87,
+                "source": "Tencent via easyquotation",
+                "status": "NORMAL",
+                "timestamp": "2026-08-14T16:14:36+08:00"
+              }
+            ],
+            "requested_count": 4,
+            "statuses": [
+              "NORMAL"
+            ],
+            "timestamps_present": 4
+          }
+        },
+        {
+          "latency_ms": 105.2,
+          "ok": true,
+          "raw_columns": [
+            "PB",
+            "PE",
+            "ask1",
+            "ask1_volume",
+            "ask2",
+            "ask2_volume",
+            "ask3",
+            "ask3_volume",
+            "ask4",
+            "ask4_volume",
+            "ask5",
+            "ask5_volume",
+            "ask_volume",
+            "bid1",
+            "bid1_volume",
+            "bid2",
+            "bid2_volume",
+            "bid3",
+            "bid3_volume",
+            "bid4",
+            "bid4_volume",
+            "bid5",
+            "bid5_volume",
+            "bid_volume",
+            "close",
+            "code",
+            "datetime",
+            "high",
+            "high_2",
+            "low",
+            "low_2",
+            "name",
+            "now",
+            "open",
+            "turnover",
+            "unknown",
+            "volume",
+            "价格/成交量(手)/成交额",
+            "均价",
+            "委差",
+            "市盈(动)",
+            "市盈(静)",
+            "总市值",
+            "成交量(手)",
+            "成交额(万)",
+            "振幅",
+            "最近逐笔成交",
+            "流通市值",
+            "涨停价",
+            "涨跌",
+            "涨跌(%)",
+            "跌停价",
+            "量比"
+          ],
+          "run": 2,
+          "summary": {
+            "codes": [
+              "600519",
+              "000001",
+              "300750",
+              "688981"
+            ],
+            "count": 4,
+            "coverage_complete": true,
+            "limit_down_present": 4,
+            "limit_up_present": 4,
+            "names_present": 4,
+            "previous_close_present": 4,
+            "quotes": [
+              {
+                "change": -13.3,
+                "change_percent": -0.98,
+                "code": "600519",
+                "limit_down": 1219.76,
+                "limit_up": 1490.82,
+                "name": "贵州茅台",
+                "previous_close": 1355.29,
+                "price": 1341.99,
+                "source": "Tencent via easyquotation",
+                "status": "NORMAL",
+                "timestamp": "2026-08-14T16:14:43+08:00"
+              },
+              {
+                "change": -0.14,
+                "change_percent": -1.24,
+                "code": "000001",
+                "limit_down": 10.13,
+                "limit_up": 12.38,
+                "name": "平安银行",
+                "previous_close": 11.25,
+                "price": 11.11,
+                "source": "Tencent via easyquotation",
+                "status": "NORMAL",
+                "timestamp": "2026-08-14T16:14:15+08:00"
+              },
+              {
+                "change": -2.37,
+                "change_percent": -0.6,
+                "code": "300750",
+                "limit_down": 317.04,
+                "limit_up": 475.56,
+                "name": "宁德时代",
+                "previous_close": 396.3,
+                "price": 393.93,
+                "source": "Tencent via easyquotation",
+                "status": "NORMAL",
+                "timestamp": "2026-08-14T16:14:00+08:00"
+              },
+              {
+                "change": 3.43,
+                "change_percent": 2.65,
+                "code": "688981",
+                "limit_down": 103.55,
+                "limit_up": 155.33,
+                "name": "中芯国际",
+                "previous_close": 129.44,
+                "price": 132.87,
+                "source": "Tencent via easyquotation",
+                "status": "NORMAL",
+                "timestamp": "2026-08-14T16:14:36+08:00"
+              }
+            ],
+            "requested_count": 4,
+            "statuses": [
+              "NORMAL"
+            ],
+            "timestamps_present": 4
+          }
+        },
+        {
+          "latency_ms": 95.3,
+          "ok": true,
+          "raw_columns": [
+            "PB",
+            "PE",
+            "ask1",
+            "ask1_volume",
+            "ask2",
+            "ask2_volume",
+            "ask3",
+            "ask3_volume",
+            "ask4",
+            "ask4_volume",
+            "ask5",
+            "ask5_volume",
+            "ask_volume",
+            "bid1",
+            "bid1_volume",
+            "bid2",
+            "bid2_volume",
+            "bid3",
+            "bid3_volume",
+            "bid4",
+            "bid4_volume",
+            "bid5",
+            "bid5_volume",
+            "bid_volume",
+            "close",
+            "code",
+            "datetime",
+            "high",
+            "high_2",
+            "low",
+            "low_2",
+            "name",
+            "now",
+            "open",
+            "turnover",
+            "unknown",
+            "volume",
+            "价格/成交量(手)/成交额",
+            "均价",
+            "委差",
+            "市盈(动)",
+            "市盈(静)",
+            "总市值",
+            "成交量(手)",
+            "成交额(万)",
+            "振幅",
+            "最近逐笔成交",
+            "流通市值",
+            "涨停价",
+            "涨跌",
+            "涨跌(%)",
+            "跌停价",
+            "量比"
+          ],
+          "run": 3,
+          "summary": {
+            "codes": [
+              "600519",
+              "000001",
+              "300750",
+              "688981"
+            ],
+            "count": 4,
+            "coverage_complete": true,
+            "limit_down_present": 4,
+            "limit_up_present": 4,
+            "names_present": 4,
+            "previous_close_present": 4,
+            "quotes": [
+              {
+                "change": -13.3,
+                "change_percent": -0.98,
+                "code": "600519",
+                "limit_down": 1219.76,
+                "limit_up": 1490.82,
+                "name": "贵州茅台",
+                "previous_close": 1355.29,
+                "price": 1341.99,
+                "source": "Tencent via easyquotation",
+                "status": "NORMAL",
+                "timestamp": "2026-08-14T16:14:43+08:00"
+              },
+              {
+                "change": -0.14,
+                "change_percent": -1.24,
+                "code": "000001",
+                "limit_down": 10.13,
+                "limit_up": 12.38,
+                "name": "平安银行",
+                "previous_close": 11.25,
+                "price": 11.11,
+                "source": "Tencent via easyquotation",
+                "status": "NORMAL",
+                "timestamp": "2026-08-14T16:14:15+08:00"
+              },
+              {
+                "change": -2.37,
+                "change_percent": -0.6,
+                "code": "300750",
+                "limit_down": 317.04,
+                "limit_up": 475.56,
+                "name": "宁德时代",
+                "previous_close": 396.3,
+                "price": 393.93,
+                "source": "Tencent via easyquotation",
+                "status": "NORMAL",
+                "timestamp": "2026-08-14T16:14:00+08:00"
+              },
+              {
+                "change": 3.43,
+                "change_percent": 2.65,
+                "code": "688981",
+                "limit_down": 103.55,
+                "limit_up": 155.33,
+                "name": "中芯国际",
+                "previous_close": 129.44,
+                "price": 132.87,
+                "source": "Tencent via easyquotation",
+                "status": "NORMAL",
+                "timestamp": "2026-08-14T16:14:36+08:00"
+              }
+            ],
+            "requested_count": 4,
+            "statuses": [
+              "NORMAL"
+            ],
+            "timestamps_present": 4
+          }
+        }
+      ],
+      "quote_stability": {
+        "coverage_complete_runs": 3,
+        "requested_symbols": [
+          "600519",
+          "000001",
+          "300750",
+          "688981"
+        ],
+        "same_canonical_values_across_successful_runs": true,
+        "successful_runs": 3
+      },
+      "rate_limit_marker_observed": false,
+      "resolve": [
+        {
+          "latency_ms": 0.0,
+          "ok": true,
+          "symbol": "600519",
+          "value": {
+            "code": "600519",
+            "exchange": "SSE",
+            "name": null,
+            "provider_symbol": "sh600519"
+          }
+        },
+        {
+          "latency_ms": 0.1,
+          "ok": true,
+          "symbol": "000001",
+          "value": {
+            "code": "000001",
+            "exchange": "SZSE",
+            "name": null,
+            "provider_symbol": "sz000001"
+          }
+        },
+        {
+          "latency_ms": 0.1,
+          "ok": true,
+          "symbol": "300750",
+          "value": {
+            "code": "300750",
+            "exchange": "SZSE",
+            "name": null,
+            "provider_symbol": "sz300750"
+          }
+        },
+        {
+          "latency_ms": 0.1,
+          "ok": true,
+          "symbol": "688981",
+          "value": {
+            "code": "688981",
+            "exchange": "SSE",
+            "name": null,
+            "provider_symbol": "sh688981"
+          }
+        }
+      ],
+      "source": "Tencent via easyquotation"
+    },
+    {
+      "capabilities": {
+        "get_intraday": true,
+        "get_quotes": false,
+        "resolve_symbol": true
+      },
+      "intraday": [
+        {
+          "requested_date": "2026-08-14",
+          "runs": [
+            {
+              "latency_ms": 503.1,
+              "ok": true,
+              "raw_columns": [
+                "time",
+                "price",
+                "volume",
+                "oriAmount",
+                "datetime",
+                "timeKey"
+              ],
+              "run": 1,
+              "summary": {
+                "contains_requested_date": true,
+                "count": 240,
+                "date_consistent": true,
+                "first": {
+                  "amount": 30713785.0,
+                  "close": 1355.0,
+                  "code": "600519",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 1355.0,
+                  "source": "Baidu direct quotation_minute_ab",
+                  "timestamp": "2026-08-14T09:30:00+08:00",
+                  "volume": 227.0
+                },
+                "first_timestamp": "2026-08-14T09:30:00+08:00",
+                "last": {
+                  "amount": 85155976.0,
+                  "close": 1341.99,
+                  "code": "600519",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 1341.99,
+                  "source": "Baidu direct quotation_minute_ab",
+                  "timestamp": "2026-08-14T15:00:00+08:00",
+                  "volume": 635.0
+                },
+                "last_timestamp": "2026-08-14T15:00:00+08:00",
+                "observed_dates": [
+                  "2026-08-14"
+                ],
+                "requested_date": "2026-08-14",
+                "stale_date_observed": false
+              }
+            },
+            {
+              "latency_ms": 259.7,
+              "ok": true,
+              "raw_columns": [
+                "time",
+                "price",
+                "volume",
+                "oriAmount",
+                "datetime",
+                "timeKey"
+              ],
+              "run": 2,
+              "summary": {
+                "contains_requested_date": true,
+                "count": 240,
+                "date_consistent": true,
+                "first": {
+                  "amount": 30713785.0,
+                  "close": 1355.0,
+                  "code": "600519",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 1355.0,
+                  "source": "Baidu direct quotation_minute_ab",
+                  "timestamp": "2026-08-14T09:30:00+08:00",
+                  "volume": 227.0
+                },
+                "first_timestamp": "2026-08-14T09:30:00+08:00",
+                "last": {
+                  "amount": 85155976.0,
+                  "close": 1341.99,
+                  "code": "600519",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 1341.99,
+                  "source": "Baidu direct quotation_minute_ab",
+                  "timestamp": "2026-08-14T15:00:00+08:00",
+                  "volume": 635.0
+                },
+                "last_timestamp": "2026-08-14T15:00:00+08:00",
+                "observed_dates": [
+                  "2026-08-14"
+                ],
+                "requested_date": "2026-08-14",
+                "stale_date_observed": false
+              }
+            },
+            {
+              "latency_ms": 279.4,
+              "ok": true,
+              "raw_columns": [
+                "time",
+                "price",
+                "volume",
+                "oriAmount",
+                "datetime",
+                "timeKey"
+              ],
+              "run": 3,
+              "summary": {
+                "contains_requested_date": true,
+                "count": 240,
+                "date_consistent": true,
+                "first": {
+                  "amount": 30713785.0,
+                  "close": 1355.0,
+                  "code": "600519",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 1355.0,
+                  "source": "Baidu direct quotation_minute_ab",
+                  "timestamp": "2026-08-14T09:30:00+08:00",
+                  "volume": 227.0
+                },
+                "first_timestamp": "2026-08-14T09:30:00+08:00",
+                "last": {
+                  "amount": 85155976.0,
+                  "close": 1341.99,
+                  "code": "600519",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 1341.99,
+                  "source": "Baidu direct quotation_minute_ab",
+                  "timestamp": "2026-08-14T15:00:00+08:00",
+                  "volume": 635.0
+                },
+                "last_timestamp": "2026-08-14T15:00:00+08:00",
+                "observed_dates": [
+                  "2026-08-14"
+                ],
+                "requested_date": "2026-08-14",
+                "stale_date_observed": false
+              }
+            }
+          ],
+          "successful_runs": 3,
+          "symbol": "600519"
+        },
+        {
+          "requested_date": "2026-08-14",
+          "runs": [
+            {
+              "latency_ms": 295.5,
+              "ok": true,
+              "raw_columns": [
+                "time",
+                "price",
+                "volume",
+                "oriAmount",
+                "datetime",
+                "timeKey"
+              ],
+              "run": 1,
+              "summary": {
+                "contains_requested_date": true,
+                "count": 240,
+                "date_consistent": true,
+                "first": {
+                  "amount": 3199944.0,
+                  "close": 11.22,
+                  "code": "000001",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 11.22,
+                  "source": "Baidu direct quotation_minute_ab",
+                  "timestamp": "2026-08-14T09:30:00+08:00",
+                  "volume": 2852.0
+                },
+                "first_timestamp": "2026-08-14T09:30:00+08:00",
+                "last": {
+                  "amount": 12930773.0,
+                  "close": 11.11,
+                  "code": "000001",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 11.11,
+                  "source": "Baidu direct quotation_minute_ab",
+                  "timestamp": "2026-08-14T15:00:00+08:00",
+                  "volume": 11639.0
+                },
+                "last_timestamp": "2026-08-14T15:00:00+08:00",
+                "observed_dates": [
+                  "2026-08-14"
+                ],
+                "requested_date": "2026-08-14",
+                "stale_date_observed": false
+              }
+            },
+            {
+              "latency_ms": 301.3,
+              "ok": true,
+              "raw_columns": [
+                "time",
+                "price",
+                "volume",
+                "oriAmount",
+                "datetime",
+                "timeKey"
+              ],
+              "run": 2,
+              "summary": {
+                "contains_requested_date": true,
+                "count": 240,
+                "date_consistent": true,
+                "first": {
+                  "amount": 3199944.0,
+                  "close": 11.22,
+                  "code": "000001",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 11.22,
+                  "source": "Baidu direct quotation_minute_ab",
+                  "timestamp": "2026-08-14T09:30:00+08:00",
+                  "volume": 2852.0
+                },
+                "first_timestamp": "2026-08-14T09:30:00+08:00",
+                "last": {
+                  "amount": 12930773.0,
+                  "close": 11.11,
+                  "code": "000001",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 11.11,
+                  "source": "Baidu direct quotation_minute_ab",
+                  "timestamp": "2026-08-14T15:00:00+08:00",
+                  "volume": 11639.0
+                },
+                "last_timestamp": "2026-08-14T15:00:00+08:00",
+                "observed_dates": [
+                  "2026-08-14"
+                ],
+                "requested_date": "2026-08-14",
+                "stale_date_observed": false
+              }
+            },
+            {
+              "latency_ms": 394.3,
+              "ok": true,
+              "raw_columns": [
+                "time",
+                "price",
+                "volume",
+                "oriAmount",
+                "datetime",
+                "timeKey"
+              ],
+              "run": 3,
+              "summary": {
+                "contains_requested_date": true,
+                "count": 240,
+                "date_consistent": true,
+                "first": {
+                  "amount": 3199944.0,
+                  "close": 11.22,
+                  "code": "000001",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 11.22,
+                  "source": "Baidu direct quotation_minute_ab",
+                  "timestamp": "2026-08-14T09:30:00+08:00",
+                  "volume": 2852.0
+                },
+                "first_timestamp": "2026-08-14T09:30:00+08:00",
+                "last": {
+                  "amount": 12930773.0,
+                  "close": 11.11,
+                  "code": "000001",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 11.11,
+                  "source": "Baidu direct quotation_minute_ab",
+                  "timestamp": "2026-08-14T15:00:00+08:00",
+                  "volume": 11639.0
+                },
+                "last_timestamp": "2026-08-14T15:00:00+08:00",
+                "observed_dates": [
+                  "2026-08-14"
+                ],
+                "requested_date": "2026-08-14",
+                "stale_date_observed": false
+              }
+            }
+          ],
+          "successful_runs": 3,
+          "symbol": "000001"
+        },
+        {
+          "requested_date": "2026-08-14",
+          "runs": [
+            {
+              "latency_ms": 431.2,
+              "ok": true,
+              "raw_columns": [
+                "time",
+                "price",
+                "volume",
+                "oriAmount",
+                "datetime",
+                "timeKey"
+              ],
+              "run": 1,
+              "summary": {
+                "contains_requested_date": true,
+                "count": 240,
+                "date_consistent": true,
+                "first": {
+                  "amount": 130489435.0,
+                  "close": 395.0,
+                  "code": "300750",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 395.0,
+                  "source": "Baidu direct quotation_minute_ab",
+                  "timestamp": "2026-08-14T09:30:00+08:00",
+                  "volume": 3304.0
+                },
+                "first_timestamp": "2026-08-14T09:30:00+08:00",
+                "last": {
+                  "amount": 117718890.0,
+                  "close": 393.93,
+                  "code": "300750",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 393.93,
+                  "source": "Baidu direct quotation_minute_ab",
+                  "timestamp": "2026-08-14T15:00:00+08:00",
+                  "volume": 2988.0
+                },
+                "last_timestamp": "2026-08-14T15:00:00+08:00",
+                "observed_dates": [
+                  "2026-08-14"
+                ],
+                "requested_date": "2026-08-14",
+                "stale_date_observed": false
+              }
+            },
+            {
+              "latency_ms": 368.4,
+              "ok": true,
+              "raw_columns": [
+                "time",
+                "price",
+                "volume",
+                "oriAmount",
+                "datetime",
+                "timeKey"
+              ],
+              "run": 2,
+              "summary": {
+                "contains_requested_date": true,
+                "count": 240,
+                "date_consistent": true,
+                "first": {
+                  "amount": 130489435.0,
+                  "close": 395.0,
+                  "code": "300750",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 395.0,
+                  "source": "Baidu direct quotation_minute_ab",
+                  "timestamp": "2026-08-14T09:30:00+08:00",
+                  "volume": 3304.0
+                },
+                "first_timestamp": "2026-08-14T09:30:00+08:00",
+                "last": {
+                  "amount": 117718890.0,
+                  "close": 393.93,
+                  "code": "300750",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 393.93,
+                  "source": "Baidu direct quotation_minute_ab",
+                  "timestamp": "2026-08-14T15:00:00+08:00",
+                  "volume": 2988.0
+                },
+                "last_timestamp": "2026-08-14T15:00:00+08:00",
+                "observed_dates": [
+                  "2026-08-14"
+                ],
+                "requested_date": "2026-08-14",
+                "stale_date_observed": false
+              }
+            },
+            {
+              "latency_ms": 314.1,
+              "ok": true,
+              "raw_columns": [
+                "time",
+                "price",
+                "volume",
+                "oriAmount",
+                "datetime",
+                "timeKey"
+              ],
+              "run": 3,
+              "summary": {
+                "contains_requested_date": true,
+                "count": 240,
+                "date_consistent": true,
+                "first": {
+                  "amount": 130489435.0,
+                  "close": 395.0,
+                  "code": "300750",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 395.0,
+                  "source": "Baidu direct quotation_minute_ab",
+                  "timestamp": "2026-08-14T09:30:00+08:00",
+                  "volume": 3304.0
+                },
+                "first_timestamp": "2026-08-14T09:30:00+08:00",
+                "last": {
+                  "amount": 117718890.0,
+                  "close": 393.93,
+                  "code": "300750",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 393.93,
+                  "source": "Baidu direct quotation_minute_ab",
+                  "timestamp": "2026-08-14T15:00:00+08:00",
+                  "volume": 2988.0
+                },
+                "last_timestamp": "2026-08-14T15:00:00+08:00",
+                "observed_dates": [
+                  "2026-08-14"
+                ],
+                "requested_date": "2026-08-14",
+                "stale_date_observed": false
+              }
+            }
+          ],
+          "successful_runs": 3,
+          "symbol": "300750"
+        },
+        {
+          "requested_date": "2026-08-14",
+          "runs": [
+            {
+              "latency_ms": 623.8,
+              "ok": true,
+              "raw_columns": [
+                "time",
+                "price",
+                "volume",
+                "oriAmount",
+                "datetime",
+                "timeKey"
+              ],
+              "run": 1,
+              "summary": {
+                "contains_requested_date": true,
+                "count": 240,
+                "date_consistent": true,
+                "first": {
+                  "amount": 258566533.0,
+                  "close": 133.99,
+                  "code": "688981",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 133.99,
+                  "source": "Baidu direct quotation_minute_ab",
+                  "timestamp": "2026-08-14T09:30:00+08:00",
+                  "volume": 19297.0
+                },
+                "first_timestamp": "2026-08-14T09:30:00+08:00",
+                "last": {
+                  "amount": 81413303.0,
+                  "close": 132.87,
+                  "code": "688981",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 132.87,
+                  "source": "Baidu direct quotation_minute_ab",
+                  "timestamp": "2026-08-14T15:00:00+08:00",
+                  "volume": 6127.0
+                },
+                "last_timestamp": "2026-08-14T15:00:00+08:00",
+                "observed_dates": [
+                  "2026-08-14"
+                ],
+                "requested_date": "2026-08-14",
+                "stale_date_observed": false
+              }
+            },
+            {
+              "latency_ms": 254.4,
+              "ok": true,
+              "raw_columns": [
+                "time",
+                "price",
+                "volume",
+                "oriAmount",
+                "datetime",
+                "timeKey"
+              ],
+              "run": 2,
+              "summary": {
+                "contains_requested_date": true,
+                "count": 240,
+                "date_consistent": true,
+                "first": {
+                  "amount": 258566533.0,
+                  "close": 133.99,
+                  "code": "688981",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 133.99,
+                  "source": "Baidu direct quotation_minute_ab",
+                  "timestamp": "2026-08-14T09:30:00+08:00",
+                  "volume": 19297.0
+                },
+                "first_timestamp": "2026-08-14T09:30:00+08:00",
+                "last": {
+                  "amount": 81413303.0,
+                  "close": 132.87,
+                  "code": "688981",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 132.87,
+                  "source": "Baidu direct quotation_minute_ab",
+                  "timestamp": "2026-08-14T15:00:00+08:00",
+                  "volume": 6127.0
+                },
+                "last_timestamp": "2026-08-14T15:00:00+08:00",
+                "observed_dates": [
+                  "2026-08-14"
+                ],
+                "requested_date": "2026-08-14",
+                "stale_date_observed": false
+              }
+            },
+            {
+              "latency_ms": 405.5,
+              "ok": true,
+              "raw_columns": [
+                "time",
+                "price",
+                "volume",
+                "oriAmount",
+                "datetime",
+                "timeKey"
+              ],
+              "run": 3,
+              "summary": {
+                "contains_requested_date": true,
+                "count": 240,
+                "date_consistent": true,
+                "first": {
+                  "amount": 258566533.0,
+                  "close": 133.99,
+                  "code": "688981",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 133.99,
+                  "source": "Baidu direct quotation_minute_ab",
+                  "timestamp": "2026-08-14T09:30:00+08:00",
+                  "volume": 19297.0
+                },
+                "first_timestamp": "2026-08-14T09:30:00+08:00",
+                "last": {
+                  "amount": 81413303.0,
+                  "close": 132.87,
+                  "code": "688981",
+                  "high": null,
+                  "low": null,
+                  "open": null,
+                  "price": 132.87,
+                  "source": "Baidu direct quotation_minute_ab",
+                  "timestamp": "2026-08-14T15:00:00+08:00",
+                  "volume": 6127.0
+                },
+                "last_timestamp": "2026-08-14T15:00:00+08:00",
+                "observed_dates": [
+                  "2026-08-14"
+                ],
+                "requested_date": "2026-08-14",
+                "stale_date_observed": false
+              }
+            }
+          ],
+          "successful_runs": 3,
+          "symbol": "688981"
+        }
+      ],
+      "name": "baidu-direct",
+      "notes": [
+        "quote stopped because the candidate lacks this capability"
+      ],
+      "quote_runs": [
+        {
+          "capability": false,
+          "error": {
+            "message": "baidu-direct is an intraday-only supplement; quote is unsupported",
+            "rate_limit_marker": false,
+            "type": "ProviderCapabilityError"
+          },
+          "latency_ms": 0.0,
+          "ok": false,
+          "run": 1
+        }
+      ],
+      "quote_stability": {
+        "coverage_complete_runs": 0,
+        "requested_symbols": [
+          "600519",
+          "000001",
+          "300750",
+          "688981"
+        ],
+        "same_canonical_values_across_successful_runs": false,
+        "successful_runs": 0
+      },
+      "rate_limit_marker_observed": false,
+      "resolve": [
+        {
+          "latency_ms": 0.0,
+          "ok": true,
+          "symbol": "600519",
+          "value": {
+            "code": "600519",
+            "exchange": "SSE",
+            "name": null,
+            "provider_symbol": "600519"
+          }
+        },
+        {
+          "latency_ms": 0.0,
+          "ok": true,
+          "symbol": "000001",
+          "value": {
+            "code": "000001",
+            "exchange": "SZSE",
+            "name": null,
+            "provider_symbol": "000001"
+          }
+        },
+        {
+          "latency_ms": 0.1,
+          "ok": true,
+          "symbol": "300750",
+          "value": {
+            "code": "300750",
+            "exchange": "SZSE",
+            "name": null,
+            "provider_symbol": "300750"
+          }
+        },
+        {
+          "latency_ms": 0.0,
+          "ok": true,
+          "symbol": "688981",
+          "value": {
+            "code": "688981",
+            "exchange": "SSE",
+            "name": null,
+            "provider_symbol": "688981"
+          }
+        }
+      ],
+      "source": "Baidu direct quotation_minute_ab"
+    }
+  ],
+  "run": {
+    "host_date": "2026-08-15",
+    "intraday_request_date": "2026-08-14",
+    "non_trading_day_expected": true,
+    "observation_date": "2026-08-15",
+    "observation_weekday": "Saturday",
+    "observed_at": "2026-08-15T22:49:10.414413+08:00"
+  },
+  "schema": 1,
+  "test_config": {
+    "authentication": {
+      "token_present": false,
+      "token_required": false
+    },
+    "delay_seconds": 1.0,
+    "install": {
+      "command": "python3 -m pip install -r config/phase-01d0-provider-bakeoff-requirements.txt",
+      "environment": "/tmp/esp32-phase-01d0-venv"
+    },
+    "intraday_delay_seconds": 1.0,
+    "intraday_period": "1",
+    "intraday_repeats": 3,
+    "intraday_request_date": "2026-08-14",
+    "observation_date": "2026-08-15",
+    "providers": [
+      "akshare-eastmoney",
+      "adata-sina",
+      "adata-tencent",
+      "easyquotation-sina",
+      "easyquotation-tencent",
+      "baidu-direct"
+    ],
+    "quote_repeats": 3,
+    "schema": 1,
+    "symbols": [
+      "600519",
+      "000001",
+      "300750",
+      "688981"
+    ],
+    "timezone": "Asia/Shanghai"
+  }
+}

@@ -6,15 +6,88 @@
 
 ## 当前 Phase
 
-**[Phase 1C — Stock Display Skeleton](PHASE1C_STOCK_DISPLAY_SKELETON.md)** — 已完成并验收；Phase 1D 尚未开始。
+**Phase 1C — Stock Display Skeleton** 已完成并验收（commit `c2031a7`）。
+**Phase 1D.0 — A-share Provider Bake-off** 是当前执行范围，已完成审计并验收；
+非交易日/收盘后组合已通过，完整 Stock Gateway 仍未开始。
 
-目标：在 `firmware/product` 现有 RLCD/LVGL 基线上，以确定性 mock 打通 stock model → stock view → LVGL → RLCD 链路：4 等分面板、中文名称/价格/涨跌格式、sparkline+昨收基线、约 10 秒场景轮换（涨/跌/平/涨停/跌停/停牌/穿越昨收），并测量全帧刷新的闪烁/残影/CPU/内存/LVGL 开销。不接入真实行情。
+## Phase 1D.0 范围与验收
+
+### 目标
+
+在服务端定义最小可复用 Provider boundary，并用固定四股对
+AKShare/Eastmoney、adata/Sina、adata/Tencent、easyquotation/Sina、
+easyquotation/Tencent 和 Baidu direct 做真实、低频、短连续调用，记录 quote
+与上一交易日 1 分钟行为、字段覆盖、延迟、稳定性、限流/失败、部署限制和
+维护风险。Baidu direct 通过公开 `quotation_minute_ab` endpoint 绕过 adata
+失效 parser；2026-08-15 为周六，本次只验收非交易日/收盘后表现，交易时段
+实时更新留待下一交易时段实测。
+
+### 非目标
+
+- 不实现完整 Stock Gateway、cache、watchlist、web 管理、HTTP API 或复杂 routing。
+- 不改 `firmware/product`，不读取 `firmware/xiaozhi`，不接入 ESP32 真行情。
+- 不做数据库/schema、权限、安全/认证设计，不引入 provider token。
+- 不把一次周六观察写成下一交易时段实时能力；不把 provider 容器兼容性
+  验证扩大成完整 Gateway 已部署或长稳通过。
+
+### 预计模块与文件
+
+- `gateway/stock_provider/`：Provider protocol、canonical `Quote`/`IntradayBar`
+  与 adapter-local conversion。
+- `config/phase-01d0-provider-bakeoff.json` 及 pinned requirements：固定测试集、
+  候选和可复现安装配置，无秘密。
+- `scripts/phase-01d0-provider-bakeoff.py`、`scripts/verify-phase-1d0.sh`、
+  `tests/test_stock_provider_boundary.py`：实测 harness、自动测试和配置检查。
+- `docs/phase-reports/phase-01d0-provider-bakeoff.md` 与同目录 JSON 审计结果。
+
+### 验收标准
+
+- 配置固定且实际调用四股 `600519`、`000001`、`300750`、`688981`；
+  quote 首次/后续延迟、四股批量覆盖、中文名、现价、昨收、状态、涨跌停、
+  timestamp、1 分钟日期和异常均有机器可读证据。
+- 六个候选路径均有实际结果或准确失败记录；Baidu direct 四股各 3 轮、每轮
+  行数/首尾时间/日期一致性/延迟均有机器可读证据；安装版本、token、费用、Linux/
+  Docker 可用性、上游、维护和 fallback 难度均有审计结论。
+- `resolve_symbol`、`get_quotes`、`get_intraday` 三项 boundary 和
+  adapter 内 canonical conversion 有自动测试；不实现完整 Gateway。
+- `bash scripts/verify-phase-1d0.sh` 通过；报告明确默认/备用为条件性建议，
+  并明确交易时段仍未验证。
+
+### 本次修补验收结果
+
+- Baidu direct 公开 endpoint 在主机网络完成固定四股各 3 轮 intraday；每股每轮
+  240 条有成交分钟，首尾 09:30/15:00，观察日期均为 2026-08-14，日期一致。
+- `bash scripts/verify-phase-1d0.sh`、带隔离 pycache 的 `py_compile` 和
+  `git diff --check` 均通过；机器结果见
+  [phase-01d0-provider-bakeoff-results.json](phase-reports/phase-01d0-provider-bakeoff-results.json)。
+- Codex 主模型在目标 QNAP NAS（x86_64 Linux、Container Station 3.1.2、
+  Docker 27.1.2-qnap8）用一次性 `python:3.11-slim` 容器复核：10/10 单测
+  通过，`easyquotation==0.7.7` 安装成功，四股 Tencent quote 4/4，四股
+  Baidu direct intraday 各 240 条且日期/首尾时间一致。
+- 因此 1D.0 可标记为非交易时段 completed/accepted；下一交易时段实时更新、
+  状态实际命中和完整 Gateway 的 NAS 部署/重启/长稳仍是明确未验证项。
+
+### 风险与回滚点
+
+- 实测结果显示候选之间 quote 与 intraday 能力不对称；easyquotation/Tencent
+  quote 字段最完整，Baidu direct 可作为 intraday supplementary；其 timekline
+  仍返回陈旧的 2021-10-08 数据，不能作为生产 intraday。
+- 组合验收结论为 quote primary easyquotation/Tencent、intraday supplementary
+  Baidu direct、quote fallback adata/Sina；本次四股未实际命中涨停/跌停或停牌，
+  不猜测 `stockStatus`/`upDownStatus` 数字语义。
+- AKShare/Eastmoney 请求收到 `RemoteDisconnected`；adata/Tencent 返回空，
+  adata/Sina 缺 timestamp/涨跌停且 1 分钟接口返回 `None`。这些是本次真实
+  网络/上游证据，不是伪造的成功。
+- 当前回滚点为 commit `c2031a7` 加本任务开始前的用户文档 diff；回滚时只移除
+  1D.0 新增文件和本阶段文档段落，保留 `AGENTS.md`、`HARDWARE_BASELINE.md`
+  及用户已有的 `ARCHITECTURE.md`/`DECISIONS.md` 有效改动，不使用 reset。
 
 ## 当前基线（已验收）
 
 - `firmware/product/`：独立 ESP-IDF v6.0.2 产品固件（唯一正式固件工程）。Phase 1B.1 已在真机验收 Boot、16 MB Flash、8 MB octal PSRAM、RLCD/LVGL、BOOT 按键与 Wi-Fi station。详见 [Phase 1B.1 报告](phase-reports/phase-01b1-clean-firmware-bootstrap.md)与[详细记录](PHASE1B1_CLEAN_FIRMWARE_BOOTSTRAP.md)。
 - `firmware/xiaozhi/`：Xiaozhi v2.4.2 冻结硬件参考（annotated tag `phase-1b-xiaozhi-reference`），不是产品固件基底，默认不读取。
-- 后端 Stock Gateway / Voice Gateway 尚未开始（Phase 1D 起）。
+- 完整 Stock Gateway / Voice Gateway 尚未开始；本次只完成 Phase 1D.0 Provider
+  boundary 与 bake-off 审计。
 
 ## Phase 1C 已验收结果
 
@@ -43,16 +116,26 @@
 
 ## 下一步
 
-Phase 1C 已完成。本次任务不进入 Phase 1D；后续经明确启动后再推进 Stock
-Gateway（Provider 适配、cache、watchlist、web 管理与 HTTP API），再进入 1E
-Live Stock Dashboard。语音链路在 Voice 2A/2B/2C 推进。顺序见
+Phase 1D.0 非交易时段与 NAS Docker 验收已完成，组合结论足够明确，可按用户
+授权直接进入完整 Stock Gateway（cache、watchlist、web 管理与 HTTP API）。
+下一交易时段必须补测 quote 实时变化与 Baidu direct 当日分钟连续更新；它不
+阻塞 Gateway 实现，但属于 Phase 1D 最终验收前必须如实记录的运行时门槛。
+Phase 1D 完成后停止，不自行进入 1E。语音链路在 Voice 2A/2B/2C 推进。顺序见
 [ROADMAP.md](ROADMAP.md)。
 
 ## 重要风险与未验证
 
 - RLCD 中文字体、2–3 米可读性、信息密度与持续刷新/残影（1C 真机验证）。
 - 音频链路（双麦/参考通道、ES7210、ES8311、扬声器、AEC、VAD、唤醒词）、电池、RTC、SHTC3、TF 卡、业务负载下的内存与长稳。
-- 行情 Provider 选型与 Gateway 部署位置未定（1D 决策）。
+- 当前有界组合建议为 quote primary easyquotation/Tencent、intraday supplementary
+  Baidu direct、quote fallback adata/Sina；这不是完整 Gateway routing。
+- 2026-08-15 周六只验证了上一交易日（2026-08-14）分钟数据；尚未验证交易时段
+  实时更新。easyquotation/Tencent timekline 实测返回 2021-10-08 陈旧数据，
+  不能直接用于看板 sparkline。
+- 本次四股没有实际命中 LIMIT_UP/LIMIT_DOWN 或 SUSPENDED；状态覆盖仍受真实样本
+  限制，不得把 `stockStatus`/`upDownStatus` 数字猜成 canonical 状态。
+- 开发主机没有 Docker；推荐 provider 组合已在 NAS Linux/Docker 临时容器
+  验证，但完整 Gateway 的 compose、持久化、重启恢复、日志和长稳尚未测试。
 - 已验收历史能力默认不重新验证，除非当前改动可能引起回归。
 
 ## 必读 canonical 文档
