@@ -70,14 +70,14 @@ Wi-Fi：`app_main()` → `network_init()` → NVS recovery → `esp_netif_init()
 - Flash：bootloader 和应用均确认 16 MB，应用日志为 16,777,216 bytes。
 - PSRAM：识别 8 MB octal PSRAM @ 80 MHz，内存测试 OK，应用日志为 8,388,608 bytes。
 - RLCD/LVGL：驱动完成 ST7305 初始化和页面提交，串口报告 `RLCD and LVGL bootstrap page ready`。
-- BOOT：GPIO0 驱动与事件回调初始化成功。
+- RLCD 实体显示：用户目视确认最终 `phase-1b.1` 镜像的 `ESP32-S3 Dashboard / Clean Firmware` 测试页显示正常。
+- BOOT：GPIO0 驱动与事件回调初始化成功；用户短按后串口捕获 `board_button: BOOT press` 和 `bootstrap: BOOT button press captured`。
 - Wi-Fi：从保留的本地 NVS schema 导入一组 station 凭据，获得 IP 并输出 `Wi-Fi station connected`；未使用 Xiaozhi 账号或激活。
 
 ### 未验证
 
 - 音频、AEC、VAD、唤醒词、电池、RTC、SHTC3、TF 卡和长时运行；均超出本阶段。
 - SmartConfig 在全新/已擦除 NVS 设备上的手机端完整配网交互尚未实测；本次连接使用已保留的本地凭据。
-- 最终 `phase-1b.1` 镜像的屏幕内容仍需用户目视确认；BOOT 实体按键仍需一次串口事件证据。
 
 ## Xiaozhi 残余依赖
 
