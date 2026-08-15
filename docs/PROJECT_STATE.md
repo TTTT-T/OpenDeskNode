@@ -30,6 +30,7 @@
 
 ## 重要风险与未验证
 
+- 当前 blocker（2026-08-15 真机）：Phase 1C 镜像在 `RLCD and LVGL bootstrap page ready` 后由 `main` task 同步创建/刷新股票 UI，触发 FreeRTOS stack overflow 并以 `RTC_SW_CPU_RST` 循环重启。host/static/build 均通过但不构成真机通过；下一轮应把 stock view 创建、mock reset 与首屏刷新移入有明确栈预算的 stock service task，而不是单纯增大 main task 栈。
 - RLCD 中文字体、2–3 米可读性、信息密度与持续刷新/残影（1C 真机验证）。
 - 音频链路（双麦/参考通道、ES7210、ES8311、扬声器、AEC、VAD、唤醒词）、电池、RTC、SHTC3、TF 卡、业务负载下的内存与长稳。
 - 行情 Provider 选型与 Gateway 部署位置未定（1D 决策）。

@@ -44,6 +44,7 @@
 
 ## 风险
 
+- **当前真机 blocker（2026-08-15）**：host tests、静态检查与 ESP-IDF 完整构建通过，镜像也完成写入校验；但启动在 RLCD/LVGL 初始化后、board/network 初始化前发生 `main` task stack overflow，并以 `RTC_SW_CPU_RST` 重启。直接原因路径是 `app_main()` 调用 `stock_view_create()`，随后 `stock_service_start()` 又在 main task 同步执行 mock reset、首屏更新与 `lv_refr_now()`。本阶段尚未通过，下一轮应把 view 创建与首次渲染移入有独立栈预算的 stock service task，并重新烧录验证；不要只增大 main task 栈掩盖调用边界问题。
 - 400×300 单色屏信息密度与中文字体渲染未验证；2–3 米可读性待真机确认。
 - ST7305 全帧刷新延迟与残影可能限制 10 秒刷新体验。
 
