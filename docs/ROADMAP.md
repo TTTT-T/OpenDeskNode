@@ -8,12 +8,13 @@
 | 0A | 产品与 upstream 基线 | 固定固件/工具链可构建；架构、ADR 和真机计划一致 |
 | 1A | USB / Identity Baseline | USB/下载模式可用；原厂 16 MB Flash 双备份一致 |
 | 1B | First Flash & Boot | 固定 Xiaozhi 固件可烧录并稳定启动；RLCD、按键和 Wi-Fi 有最小真机证据 |
-| 1C | Hardware Baseline | 音频、麦克风、AEC、唤醒、电池、传感器、内存峰值和稳定性有真机证据 |
-| 2 | Product UI Foundation | mock data Dashboard、语音 Overlay 与现有 DeviceState 兼容 |
+| 1B.1 | Clean Firmware Bootstrap | Xiaozhi 冻结为 reference；独立 ESP-IDF 固件重新通过 Boot、Flash/PSRAM、RLCD、BOOT 与 Wi-Fi 基线 |
+| 1C | Voice Hardware Bring-up | 正式固件独立驱动 ES7210、ES8311 和 I2S，完成录音/播放与资源快照；不含 AEC/VAD/唤醒 |
+| 2 | Product UI Foundation | clean firmware 上的 mock data Dashboard 与语音 Overlay skeleton |
 | 3 | Stock Domain & Backend | canonical model、Provider、cache、watchlist 和 HTTP API 有自动测试及一个实盘候选验证 |
 | 4 | Live Stock Dashboard | ESP32 显示真实行情并正确表达 loading/error/stale/update time |
 | 5 | Stock Detail & Intraday | 分时曲线、昨收线、开高低与缺失数据行为通过验收 |
-| 6 | GPT Voice Baseline | 真机完成 ASR → OpenAI GPT → TTS，不含股票工具 |
+| 6 | Voice Gateway Baseline | 本地唤醒与自有 Voice Gateway 接入 OpenAI Realtime，不含股票工具 |
 | 7 | GPT Stock Tools | `get_stock_quote`、`get_watchlist`、`get_stock_intraday` 与 Dashboard 同源 |
 | 8 | Product Integration | Dashboard Idle、语音覆盖、自动返回、断网恢复和长时间运行通过 |
 
@@ -37,4 +38,4 @@ Phase 1 以 [HARDWARE_BASELINE.md](HARDWARE_BASELINE.md) 为唯一详细矩阵�
 
 ## Future（不得提前并入 v1 Phase）
 
-OpenAI Realtime、AEC 深度优化、真正的 RLCD partial update、OTA 产品化、配置页面、K 线、新闻与更多金融工具。每项需独立证据和 Phase。
+AEC 深度优化、真正的 RLCD partial update、OTA 产品化、配置页面、K 线、新闻与更多金融工具。每项需独立证据和 Phase。

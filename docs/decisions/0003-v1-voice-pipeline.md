@@ -1,8 +1,10 @@
 # ADR-0003：v1 采用 Xiaozhi ASR → GPT → TTS
 
-- 状态：Accepted
+- 状态：Superseded by [ADR-0004](0004-clean-product-firmware.md)
 - 日期：2026-08-13
 - 决策者：项目用户与 Codex
+
+> 历史保留：Xiaozhi 协议和 Xiaozhi Server 不再是产品语音路径；新目标是本地唤醒与自有 Voice Gateway 接入 OpenAI Realtime API。
 
 ## 背景
 

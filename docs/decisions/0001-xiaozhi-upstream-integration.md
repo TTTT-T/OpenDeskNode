@@ -1,8 +1,10 @@
 # ADR-0001：Xiaozhi 固件采用固定 release 的 Git subtree
 
-- 状态：Accepted
+- 状态：Superseded by [ADR-0004](0004-clean-product-firmware.md)
 - 日期：2026-08-13
 - 决策者：项目用户与 Codex
+
+> 历史保留：Git subtree 与 v2.4.2 已验收代码继续作为硬件参考，但不再作为正式产品固件基底。
 
 ## 背景
 

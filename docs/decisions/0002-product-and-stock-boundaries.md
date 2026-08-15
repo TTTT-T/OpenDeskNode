@@ -4,6 +4,8 @@
 - 日期：2026-08-13
 - 决策者：项目用户与 Codex
 
+> [ADR-0004](0004-clean-product-firmware.md) 已替代“在 Xiaozhi 基础设施上建立产品层”的固件基底前提；Stock Service 统一数据边界仍然有效。
+
 ## 背景
 
 设备既显示股票行情，也允许 GPT 回答股票问题。如果 UI 与 GPT 各自访问数据源，价格、时间和错误语义会分叉。股票业务也不能污染 Xiaozhi 的 Board、Display driver 或协议基础设施。
