@@ -1,6 +1,25 @@
 # Phase 1 Hardware Baseline
 
-状态：等待硬件。本文是到货后的验收记录模板；未填写证据的条目一律视为未通过。
+状态：Phase 1A 和 Phase 1B 已完成；Phase 1C 尚未启动。本文是验收记录模板；未填写证据的条目一律视为未通过。
+
+## 当前接入观察
+
+- 用户报告：2026-08-15 已通过 Type-C 接入 Mac。
+- 主机检查：2026-08-15 11:14 CST，`ioreg -p IOUSB` 未发现 Espressif/Waveshare 设备，`/dev` 未出现 `cu.usb*` 或 `tty.usb*`。
+- 后续复查：Mac 已稳定枚举 Espressif `303a:1001` 和 `/dev/cu.usbmodem3101`；确认 ESP32-S3 revision v0.2、16 MB Flash、8 MB PSRAM、Secure Boot/Flash Encryption 未启用。
+- Phase 1B：Xiaozhi v2.4.2 merged image 首次烧录和写后 hash 验证成功；启动、RLCD 可读内容、BOOT 单击和 Wi-Fi 首配/联网通过最小验收。详见 [Phase 1B 报告](phase-reports/phase-01b-first-flash-boot.md)。
+
+## Phase 1A 写入前安全门槛
+
+在任何 `write-flash`、`flash`、erase、分区或 OTA 写入之前，必须完成：
+
+1. 记录串口、USB vendor/product、芯片型号、MAC（公开记录脱敏）、Flash ID/容量和安全启动/加密只读状态；
+2. 读取完整 `0x1000000` bytes 原厂 Flash 两次，保存为两个不同文件；
+3. 确认两份文件均为 16,777,216 bytes 且 SHA-256 完全一致；
+4. 记录恢复命令和备份保存位置，备份不得提交 Git；
+5. 复核待写入 merged binary 的来源、版本、大小、SHA-256 和 Flash 布局。
+
+任一项缺失时保持只读，不烧录。Phase 1A 通过后再进入下方外围功能与稳定性验收。
 
 ## 测试身份
 

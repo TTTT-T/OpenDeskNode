@@ -1,6 +1,6 @@
 # 项目上下文
 
-最后核验：2026-08-13
+最后核验：2026-08-15
 
 ## 产品目标
 
@@ -20,7 +20,9 @@
 - Xiaozhi `Display::SetupUI()` 在 `Application::Initialize()` 中调用；产品 UI 应在显示/Application 扩展层接入，不进入 ST7305 或 Board 驱动。
 - `xinnan-tech/xiaozhi-esp32-server` v0.9.6 提供 WebSocket、ASR、LLM、TTS、插件、Function Calling、设备/服务端/接入点 MCP；其 OpenAI-compatible LLM 适配器当前使用 Python SDK 的 Chat Completions 接口。
 - OpenAI 官方当前支持 function calling，也提供 Realtime 音频与工具调用；v1 仍选择可分段验证的 ASR → GPT → TTS，Realtime 是后续独立升级。
-- 硬件尚未到位。任何显示、音频、AEC、按键、电池、Wi-Fi 或稳定性结论都未通过本项目真机验收。
+- 2026-08-15 真机已稳定枚举为 Espressif `303a:1001` / `/dev/cu.usbmodem3101`，确认 ESP32-S3 revision v0.2、16 MB Flash、8 MB PSRAM，并完成两份一致的 16 MB 原厂 Flash 备份。
+- Xiaozhi v2.4.2 `waveshare/esp32-s3-rlcd-4.2` 已首次烧录并启动；Boot、基础内存识别、RLCD 可读内容、BOOT 单击与 Wi-Fi 首配/联网通过 Phase 1B 最小验收。音频质量、AEC、唤醒、电池、传感器、资源峰值和长稳仍未验收。
+- 官方固件默认连接 `api.tenclass.net` / `xiaozhi.me` 官方云，激活时使用账号和六位码绑定设备。本项目未完成该绑定；语音集成前需明确选择官方云或自托管 Xiaozhi Server。
 
 ## v1 范围
 
@@ -44,7 +46,7 @@
 
 ## 尚未验证
 
-- 到货硬件的 SKU、硬件 revision、GPIO 与官方资料是否完全一致。
+- 实物 PCB/revision 与 GPIO 是否与官方资料逐项完全一致。
 - RLCD 实际方向、中文字体、刷新延迟、残影和持续刷新稳定性。
 - 双麦通道、参考通道、AEC、扬声器、按键、电池曲线、RTC、SHTC3、TF 卡的实际行为。
 - 固件在语音空闲/活跃、显示活跃时的 internal heap、largest block、PSRAM 和长期稳定性。

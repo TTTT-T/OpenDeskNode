@@ -6,7 +6,9 @@
 | --- | --- | --- |
 | 0 | Agent 协作与交付基础 | 已完成：文档职责、验收与 Git 工作流 |
 | 0A | 产品与 upstream 基线 | 固定固件/工具链可构建；架构、ADR 和真机计划一致 |
-| 1 | Hardware Baseline | RLCD、Wi-Fi、音频、麦克风、AEC、按键、电池、内存和稳定性全部有真机证据 |
+| 1A | USB / Identity Baseline | USB/下载模式可用；原厂 16 MB Flash 双备份一致 |
+| 1B | First Flash & Boot | 固定 Xiaozhi 固件可烧录并稳定启动；RLCD、按键和 Wi-Fi 有最小真机证据 |
+| 1C | Hardware Baseline | 音频、麦克风、AEC、唤醒、电池、传感器、内存峰值和稳定性有真机证据 |
 | 2 | Product UI Foundation | mock data Dashboard、语音 Overlay 与现有 DeviceState 兼容 |
 | 3 | Stock Domain & Backend | canonical model、Provider、cache、watchlist 和 HTTP API 有自动测试及一个实盘候选验证 |
 | 4 | Live Stock Dashboard | ESP32 显示真实行情并正确表达 loading/error/stale/update time |

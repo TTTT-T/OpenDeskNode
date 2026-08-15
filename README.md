@@ -1,6 +1,6 @@
 # ESP32-S3 RLCD 股票看板 + GPT 终端
 
-目标是在 Waveshare ESP32-S3-RLCD-4.2 上构建可长期维护的 A 股桌面看板和 OpenAI GPT 语音终端。项目当前尚未开发业务功能；固件 upstream 与可复现主机构建基线已经建立，真机基线等待硬件到货。
+目标是在 Waveshare ESP32-S3-RLCD-4.2 上构建可长期维护的 A 股桌面看板和 OpenAI GPT 语音终端。项目当前尚未开发业务功能；固件 upstream 与可复现主机构建基线已经建立。硬件已于 2026-08-15 到货并接入 Mac，Phase 1A 从 USB 连接、原厂固件备份和设备身份基线开始。
 
 ## 从这里开始
 
