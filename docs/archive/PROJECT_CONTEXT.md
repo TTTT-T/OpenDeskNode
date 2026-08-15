@@ -1,5 +1,8 @@
 # 项目上下文
 
+> **Archived / historical — do not load by default.**
+> 本文件于 2026-08-15 归档：产品目标与需求已移至 [PRODUCT_REQUIREMENTS.md](../PRODUCT_REQUIREMENTS.md)，当前状态、假设与未验证项已移至 [PROJECT_STATE.md](../PROJECT_STATE.md)。以下内容不再维护，以 canonical 文档为准。
+
 最后核验：2026-08-15
 
 ## 产品目标
@@ -53,4 +56,4 @@
 - AKShare 股票文档：<https://akshare.akfamily.xyz/data/stock/stock.html>
 - Tushare A 股实时分钟：<https://tushare.pro/document/2?doc_id=374>
 
-固定版本与核验结果见 [UPSTREAM_BASELINE.md](UPSTREAM_BASELINE.md)。
+固定版本与核验结果见 [UPSTREAM_BASELINE.md](../UPSTREAM_BASELINE.md)。

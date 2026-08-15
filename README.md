@@ -4,10 +4,10 @@
 
 ## 从这里开始
 
-1. [项目上下文](docs/PROJECT_CONTEXT.md)
-2. [当前架构](docs/ARCHITECTURE.md)
-3. [架构决策](docs/decisions/README.md)
-4. [当前阶段](docs/STATUS.md)
+1. [当前状态](docs/PROJECT_STATE.md)
+2. [产品需求](docs/PRODUCT_REQUIREMENTS.md)
+3. [当前架构](docs/ARCHITECTURE.md)
+4. [当前有效决策](docs/DECISIONS.md)
 5. [路线图](docs/ROADMAP.md)
 
 ## 固件构建

@@ -35,19 +35,23 @@ app_main
 
 正式固件不包含 Xiaozhi 激活、OTA、WebSocket/MQTT 业务协议、MCP 或云端 ASR/LLM/TTS，也不访问 `xiaozhi.me`、`api.tenclass.net` 或其他 Xiaozhi 官方服务。
 
-## 产品目标架构（未实现部分）
+## 目标形态：ESP32 + 共享 LAN Gateway
+
+当前已有效的能力是 board/display/network（Phase 1B.1 真机验收）；股票与语音是目标形态，共用同一台自部署 LAN Gateway：
 
 ```text
-ESP32 product firmware                    Own backend
-┌─ board / display / network ─┐          ┌─ Stock Service ── Provider
-│  Product coordinator       │  HTTP    │  canonical models/cache
-│  dashboard + stock client  │◀────────▶│
-│  voice hardware/session    │  audio   │  Voice Gateway
-└─ local wake word          ─┘◀────────▶└─ OpenAI Realtime API
+ESP32-S3（轻量客户端）                  自部署 LAN Gateway（同一后端）
+┌─ board / display / network ─┐        ┌─ Stock Gateway ──────────────┐
+│  dashboard + stock client ──┼─HTTP──▶│  A 股数据 / Provider 适配     │
+│  voice hardware/session ────┼─audio─▶│  watchlist / cache / web 管理 │
+│  local wake word            │        │  Voice Gateway 路径           │
+└─────────────────────────────┘        │  └─ OpenAI Realtime API       │
+                                       └──────────────────────────────┘
 ```
 
-- Dashboard 和 GPT 股票问答将共用同一 Stock Service 与标准模型。
-- 本地唤醒词、麦克风和扬声器由正式固件自主管理；后续通过自有 Voice Gateway 连接 OpenAI Realtime API。
+- ESP32 保持轻量：只负责显示、按键、Wi-Fi、音频采集/播放与本地唤醒词；不直连复杂互联网 API，不持有任何第三方凭据。
+- Stock Gateway 拥有 A 股行情数据、watchlist（4 股）、cache 与后续 web 管理页；Dashboard 与 GPT 股票问答同源读取。
+- Voice Gateway 路径拥有 OpenAI Realtime 凭据与会话；本地唤醒词、麦克风和扬声器由正式固件自主管理。
 - OpenAI 与行情 Provider 凭据只存在服务端安全存储，不进入 ESP32 或 Git。
 
 ## 不可破坏边界
@@ -58,4 +62,4 @@ ESP32 product firmware                    Own backend
 - 不把构建通过当作真机验收；显示、按键、Wi-Fi、音频和长稳分别保留实测证据。
 - 冻结参考基线不追踪 upstream `main`；更新必须固定 tag/SHA 并重新回归。
 
-有效长期决策见 [decisions/README.md](decisions/README.md)，阶段顺序见 [ROADMAP.md](ROADMAP.md)。
+当前有效决策见 [DECISIONS.md](DECISIONS.md)（完整历史见 [decisions/README.md](decisions/README.md)），产品需求见 [PRODUCT_REQUIREMENTS.md](PRODUCT_REQUIREMENTS.md)，阶段顺序见 [ROADMAP.md](ROADMAP.md)。
