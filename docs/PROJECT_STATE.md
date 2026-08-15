@@ -6,7 +6,7 @@
 
 ## 当前 Phase
 
-**[Phase 1C — Stock Display Skeleton](PHASE1C_STOCK_DISPLAY_SKELETON.md)** — 进行中（规划已确立，实现与验收尚未开始）。
+**[Phase 1C — Stock Display Skeleton](PHASE1C_STOCK_DISPLAY_SKELETON.md)** — 已完成并验收；Phase 1D 尚未开始。
 
 目标：在 `firmware/product` 现有 RLCD/LVGL 基线上，以确定性 mock 打通 stock model → stock view → LVGL → RLCD 链路：4 等分面板、中文名称/价格/涨跌格式、sparkline+昨收基线、约 10 秒场景轮换（涨/跌/平/涨停/跌停/停牌/穿越昨收），并测量全帧刷新的闪烁/残影/CPU/内存/LVGL 开销。不接入真实行情。
 
@@ -16,8 +16,25 @@
 - `firmware/xiaozhi/`：Xiaozhi v2.4.2 冻结硬件参考（annotated tag `phase-1b-xiaozhi-reference`），不是产品固件基底，默认不读取。
 - 后端 Stock Gateway / Voice Gateway 尚未开始（Phase 1D 起）。
 
+## Phase 1C 已验收结果
+
+- `firmware/product/components/stock/` 已加入纯 C99 的
+  model/mock、LVGL 2×2 view、约 10 秒刷新 service、字体子集和 host test；
+  `scripts/verify-phase-1c.sh` 提供静态检查与 host test。
+- 实际链路为 `deterministic mock → stock model → stock view → LVGL → RLCD`，
+  不接入真实行情、Stock Gateway、Web 管理或任何凭据。
+- 启动路径已按既定修复边界改为 task-owned：`app_main()` 只调用
+  `stock_service_start()`；stock view 创建、mock reset 与首屏刷新都在具有
+  明确栈预算（8192 字节）的 stock service task 内、于首次约 10 秒延迟之前
+  完成，main task 不再创建/刷新股票 UI，main task 栈未增大。真机重新烧录
+  后 `app_main()` 正常返回，完整 24-tick 循环无 stack overflow、panic 或
+  reboot；Wi-Fi 回归通过，用户确认 4 股显示、约 10 秒刷新、闪烁/残影与
+  2–3 米可读性可接受。证据见
+  [Phase 1C 报告](phase-reports/phase-01c-stock-display-skeleton.md)。
+
 ## 最近完成
 
+- [Phase 1C — Stock Display Skeleton](phase-reports/phase-01c-stock-display-skeleton.md)（2026-08-15）
 - [Phase 1B.1 — Clean Firmware Bootstrap](phase-reports/phase-01b1-clean-firmware-bootstrap.md)（2026-08-15）
 - [Phase 1B — First Xiaozhi Flash & Boot Verification](phase-reports/phase-01b-first-flash-boot.md)（2026-08-15）
 - [Phase 1A — USB、设备身份与原厂备份](phase-reports/phase-01a-usb-identity-backup.md)（2026-08-15）
@@ -26,11 +43,13 @@
 
 ## 下一步
 
-完成 1C 后进入 Phase 1D — Stock Gateway（自部署行情后端：Provider 适配、cache、watchlist 与 web 管理、HTTP API），再 1E Live Stock Dashboard；语音链路在 Voice 2A/2B/2C 推进。顺序见 [ROADMAP.md](ROADMAP.md)。
+Phase 1C 已完成。本次任务不进入 Phase 1D；后续经明确启动后再推进 Stock
+Gateway（Provider 适配、cache、watchlist、web 管理与 HTTP API），再进入 1E
+Live Stock Dashboard。语音链路在 Voice 2A/2B/2C 推进。顺序见
+[ROADMAP.md](ROADMAP.md)。
 
 ## 重要风险与未验证
 
-- 当前 blocker（2026-08-15 真机）：Phase 1C 镜像在 `RLCD and LVGL bootstrap page ready` 后由 `main` task 同步创建/刷新股票 UI，触发 FreeRTOS stack overflow 并以 `RTC_SW_CPU_RST` 循环重启。host/static/build 均通过但不构成真机通过；下一轮应把 stock view 创建、mock reset 与首屏刷新移入有明确栈预算的 stock service task，而不是单纯增大 main task 栈。
 - RLCD 中文字体、2–3 米可读性、信息密度与持续刷新/残影（1C 真机验证）。
 - 音频链路（双麦/参考通道、ES7210、ES8311、扬声器、AEC、VAD、唤醒词）、电池、RTC、SHTC3、TF 卡、业务负载下的内存与长稳。
 - 行情 Provider 选型与 Gateway 部署位置未定（1D 决策）。

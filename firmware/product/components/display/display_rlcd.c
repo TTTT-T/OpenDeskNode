@@ -24,6 +24,7 @@
 #include "esp_lcd_panel_io.h"
 #include "esp_log.h"
 #include "esp_lvgl_port.h"
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "lvgl.h"
@@ -43,6 +44,21 @@ typedef struct {
 } rlcd_state_t;
 
 static rlcd_state_t s_rlcd;
+
+/* Full-frame flush counters, shared between the LVGL task and readers. */
+static portMUX_TYPE s_flush_metrics_mux = portMUX_INITIALIZER_UNLOCKED;
+static display_flush_metrics_t s_flush_metrics;
+
+static void record_flush_us(int64_t duration_us)
+{
+    portENTER_CRITICAL(&s_flush_metrics_mux);
+    s_flush_metrics.flush_count += 1U;
+    s_flush_metrics.flush_total_us += (uint64_t)(duration_us > 0 ? duration_us : 0);
+    if ((uint32_t)duration_us > s_flush_metrics.flush_max_us) {
+        s_flush_metrics.flush_max_us = (uint32_t)duration_us;
+    }
+    portEXIT_CRITICAL(&s_flush_metrics_mux);
+}
 
 static esp_err_t rlcd_send_command(uint8_t command)
 {
@@ -170,10 +186,12 @@ static void rlcd_flush_cb(lv_display_t *display, const lv_area_t *area, uint8_t 
 
     static const uint8_t column_range[] = {0x12, 0x2a};
     static const uint8_t page_range[] = {0x00, 0xc7};
+    const int64_t flush_started_us = esp_timer_get_time();
     ESP_ERROR_CHECK(rlcd_send_sequence(0x2a, column_range, sizeof(column_range)));
     ESP_ERROR_CHECK(rlcd_send_sequence(0x2b, page_range, sizeof(page_range)));
     ESP_ERROR_CHECK(rlcd_send_command(0x2c));
     ESP_ERROR_CHECK(esp_lcd_panel_io_tx_color(s_rlcd.io, -1, s_rlcd.framebuffer, RLCD_FRAMEBUFFER_SIZE));
+    record_flush_us(esp_timer_get_time() - flush_started_us);
     lv_display_flush_ready(display);
 }
 
@@ -308,4 +326,24 @@ void display_set_button_status(const char *status)
 void display_set_psram_status(const char *status)
 {
     set_status_label(s_rlcd.psram_label, "PSRAM", status);
+}
+
+bool display_lock(uint32_t timeout_ms)
+{
+    return lvgl_port_lock(timeout_ms);
+}
+
+void display_unlock(void)
+{
+    lvgl_port_unlock();
+}
+
+display_flush_metrics_t display_flush_metrics_take(void)
+{
+    display_flush_metrics_t snapshot;
+    portENTER_CRITICAL(&s_flush_metrics_mux);
+    snapshot = s_flush_metrics;
+    memset(&s_flush_metrics, 0, sizeof(s_flush_metrics));
+    portEXIT_CRITICAL(&s_flush_metrics_mux);
+    return snapshot;
 }

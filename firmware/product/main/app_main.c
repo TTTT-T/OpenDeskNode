@@ -1,9 +1,13 @@
 /*
- * Phase 1B.1 product bootstrap coordinator.
+ * Phase 1C product bootstrap coordinator.
  *
- * This file intentionally initializes only board input, RLCD/LVGL, memory
- * reporting, and Wi-Fi station support. It has no cloud, voice, stock, OTA,
- * or application-protocol responsibilities.
+ * Orchestrates the accepted Phase 1B.1 hardware bootstrap (flash/PSRAM
+ * report, RLCD/LVGL, BOOT button, Wi-Fi station) and the Phase 1C stock
+ * display skeleton: a deterministic mock drives the stock model into the
+ * dashboard view on the RLCD, refreshed about every 10 seconds with one
+ * metrics log line per cycle. No cloud, voice, real market API, OTA, or
+ * application-protocol responsibilities. The stock display does not depend
+ * on the network connection.
  */
 #include <stdbool.h>
 #include <stddef.h>
@@ -15,6 +19,7 @@
 #include "esp_log.h"
 #include "esp_psram.h"
 #include "network.h"
+#include "stock_service.h"
 
 static const char *TAG = "bootstrap";
 static const size_t EXPECTED_FLASH_BYTES = 16U * 1024U * 1024U;
@@ -45,12 +50,14 @@ static bool report_memory_baseline(void)
 
 static void on_boot_button_pressed(void)
 {
-    ESP_LOGI(TAG, "BOOT button press captured");
+    /* Phase 1C: capture only. Settings entry comes in a later phase. */
+    ESP_LOGI(TAG, "BOOT button press captured (settings entry not implemented)");
     display_set_button_status("Pressed");
 }
 
 static void on_wifi_status_changed(network_status_t status)
 {
+    ESP_LOGI(TAG, "Wi-Fi status: %s", network_status_text(status));
     display_set_wifi_status(network_status_text(status));
 }
 
@@ -61,6 +68,13 @@ void app_main(void)
 
     ESP_ERROR_CHECK(display_init());
     display_set_psram_status(psram_ok ? "OK" : "Mismatch");
+
+    /* Stock display skeleton: mock -> model -> view -> LVGL -> RLCD. The
+     * stock service task (explicit stack budget) creates the view, resets
+     * the mock, and renders the first update before its ~10 second cycle;
+     * the main task never touches LVGL stock widgets. */
+    ESP_ERROR_CHECK(stock_service_start());
+
     ESP_ERROR_CHECK(board_button_init(on_boot_button_pressed));
     ESP_ERROR_CHECK(network_init(on_wifi_status_changed));
 }
