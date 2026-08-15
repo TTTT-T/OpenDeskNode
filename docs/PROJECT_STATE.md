@@ -1,14 +1,20 @@
 # 项目当前状态
 
-最后更新：2026-08-15
+最后更新：2026-08-16
 
 本文件是当前阶段与状态的唯一入口。新会话从这里定位当前 Phase 与最近相关报告，再按需读取指向的 canonical 文档；不为背景加载全部阶段报告或 `docs/archive/`。
 
 ## 当前 Phase
 
-**Phase 1C — Stock Display Skeleton** 已完成并验收（commit `c2031a7`）。
-**Phase 1D.0 — A-share Provider Bake-off** 是当前执行范围，已完成审计并验收；
-非交易日/收盘后组合已通过，完整 Stock Gateway 仍未开始。
+**[Phase 1D — Stock Gateway](PHASE1D_STOCK_GATEWAY.md)** — 已完成并验收；按要求
+停在本阶段，不进入 Phase 1E。
+
+Phase 1C 已完成并验收（commit `c2031a7`）；Phase 1D.0 已完成并验收
+（commit `9546c90`），推荐 quote primary easyquotation/Tencent、intraday
+supplementary Baidu direct、quote fallback adata/Sina。Phase 1D Gateway 已在
+TerrenceNAS Container Station 部署并完成 LAN Web/API、真实四股数据、SQLite
+volume、容器重启持久化和进程崩溃自动恢复验收；不连接 ESP32、不修改 Phase 1C
+UI，不进入 Phase 1E。
 
 ## Phase 1D.0 范围与验收
 
@@ -86,8 +92,8 @@ easyquotation/Tencent 和 Baidu direct 做真实、低频、短连续调用，�
 
 - `firmware/product/`：独立 ESP-IDF v6.0.2 产品固件（唯一正式固件工程）。Phase 1B.1 已在真机验收 Boot、16 MB Flash、8 MB octal PSRAM、RLCD/LVGL、BOOT 按键与 Wi-Fi station。详见 [Phase 1B.1 报告](phase-reports/phase-01b1-clean-firmware-bootstrap.md)与[详细记录](PHASE1B1_CLEAN_FIRMWARE_BOOTSTRAP.md)。
 - `firmware/xiaozhi/`：Xiaozhi v2.4.2 冻结硬件参考（annotated tag `phase-1b-xiaozhi-reference`），不是产品固件基底，默认不读取。
-- 完整 Stock Gateway / Voice Gateway 尚未开始；本次只完成 Phase 1D.0 Provider
-  boundary 与 bake-off 审计。
+- Stock Gateway Phase 1D 已完成并在 NAS/非交易时段验收；下一交易时段实时推进
+  作为明确补测项保留，Voice Gateway 尚未开始。
 
 ## Phase 1C 已验收结果
 
@@ -107,6 +113,8 @@ easyquotation/Tencent 和 Baidu direct 做真实、低频、短连续调用，�
 
 ## 最近完成
 
+- [Phase 1D — Stock Gateway](phase-reports/phase-01d-stock-gateway.md)（2026-08-16）
+- [Phase 1D.0 — A-share Provider Bake-off](phase-reports/phase-01d0-provider-bakeoff.md)（2026-08-15）
 - [Phase 1C — Stock Display Skeleton](phase-reports/phase-01c-stock-display-skeleton.md)（2026-08-15）
 - [Phase 1B.1 — Clean Firmware Bootstrap](phase-reports/phase-01b1-clean-firmware-bootstrap.md)（2026-08-15）
 - [Phase 1B — First Xiaozhi Flash & Boot Verification](phase-reports/phase-01b-first-flash-boot.md)（2026-08-15）
@@ -116,12 +124,9 @@ easyquotation/Tencent 和 Baidu direct 做真实、低频、短连续调用，�
 
 ## 下一步
 
-Phase 1D.0 非交易时段与 NAS Docker 验收已完成，组合结论足够明确，可按用户
-授权直接进入完整 Stock Gateway（cache、watchlist、web 管理与 HTTP API）。
-下一交易时段必须补测 quote 实时变化与 Baidu direct 当日分钟连续更新；它不
-阻塞 Gateway 实现，但属于 Phase 1D 最终验收前必须如实记录的运行时门槛。
-Phase 1D 完成后停止，不自行进入 1E。语音链路在 Voice 2A/2B/2C 推进。顺序见
-[ROADMAP.md](ROADMAP.md)。
+按用户要求停在 Phase 1D，不自行进入 Phase 1E。待下一交易时段可补测 quote
+实时变化与 Baidu direct 当日分钟连续更新；该补测不得扩大成 Phase 1E。NAS 全机
+重启会影响其他服务，仍需单独确认。后续 Phase 顺序见 [ROADMAP.md](ROADMAP.md)。
 
 ## 重要风险与未验证
 
@@ -134,8 +139,9 @@ Phase 1D 完成后停止，不自行进入 1E。语音链路在 Voice 2A/2B/2C �
   不能直接用于看板 sparkline。
 - 本次四股没有实际命中 LIMIT_UP/LIMIT_DOWN 或 SUSPENDED；状态覆盖仍受真实样本
   限制，不得把 `stockStatus`/`upDownStatus` 数字猜成 canonical 状态。
-- 开发主机没有 Docker；推荐 provider 组合已在 NAS Linux/Docker 临时容器
-  验证，但完整 Gateway 的 compose、持久化、重启恢复、日志和长稳尚未测试。
+- 完整 Gateway 已在 NAS Docker 验证 build、health、LAN Web/API、named volume、
+  container restart 和进程崩溃恢复；NAS 全机重启、跨日长稳和交易时段实时推进
+  尚未验证。
 - 已验收历史能力默认不重新验证，除非当前改动可能引起回归。
 
 ## 必读 canonical 文档

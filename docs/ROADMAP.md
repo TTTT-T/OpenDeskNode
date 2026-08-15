@@ -8,7 +8,7 @@
 | 1B.1 | Clean Firmware Bootstrap | 已完成 |
 | 1C | Stock Display Skeleton（详见 [Phase 1C 文档](PHASE1C_STOCK_DISPLAY_SKELETON.md)） | 已完成并验收 |
 | 1D.0 | A-share Provider Bake-off（quote primary easyquotation/Tencent；intraday supplementary Baidu direct；quote fallback adata/Sina） | 已完成并验收（非交易时段；下一交易时段实时更新待验） |
-| 1D | Stock Gateway（自部署行情后端） | 未开始（完整实现） |
+| 1D | Stock Gateway（自部署行情后端，详见 [Phase 1D 文档](PHASE1D_STOCK_GATEWAY.md)） | 已完成并验收（NAS/非交易时段；交易时段补测保留） |
 | 1E | Live Stock Dashboard（真实行情接入） | 未开始 |
 | 2A | Voice Hardware Bring-up | 未开始 |
 | 2B | Wake Word / VAD / AEC | 未开始 |

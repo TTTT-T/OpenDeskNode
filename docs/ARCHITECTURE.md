@@ -62,6 +62,39 @@ Stock Service → StockProvider adapter
 字段。Provider 与行情凭据仍只存在服务端，ESP32 只访问后续的自有 LAN
 Gateway。
 
+## Phase 1D Stock Gateway（已在 NAS 验收）
+
+当前工作树已实现一个 Python 3.11/FastAPI/Pydantic/SQLite 模块化单体：
+
+```text
+FastAPI v1 API + 手机 Web
+          │
+          ▼
+StockGatewayService（session / refresh / freshness / dashboard）
+          │
+          ├─ SQLiteRepository（devices / fixed four slots / settings /
+          │                    service_state / latest snapshots only）
+          └─ fixed provider composition
+               ├─ easyquotation/Tencent quote primary
+               ├─ adata/Sina quote fallback per failed symbol
+               └─ Baidu direct current-session intraday supplement
+```
+
+`watchlist_slots` 每个 device 使用四个固定 slot 列，并由 SQLite CHECK 保证四个
+六位代码存在且唯一；snapshot 以 symbol 为主键，只保留最新 quote、当前 session
+分钟数组和真实 source timestamp。Gateway 在 canonical 边界重算
+`current_price - previous_close`，不使用 provider 的涨跌字段；可靠状态不足时
+保留 `UNKNOWN`。Provider 调用有明确 timeout、有限 retry/backoff，单股失败不
+覆盖旧 snapshot。
+
+市场 session 使用 `exchange-calendars` 的 XSHG 历史能力，并以固定的
+`chinese-calendar` 当前节假日数据覆盖 pinned XSHG schedule 的日期上界；所有
+session 和 `next_open_at` 使用 `Asia/Shanghai`。容器只提供 LAN HTTP，不实现
+mDNS、登录或公网暴露；服务已部署在 TerrenceNAS 的 Container Station，使用
+`terrencenas.local:8000`、named volume、healthcheck 与 `restart: unless-stopped`。
+容器重启持久化和主进程异常退出自动恢复已实测；NAS 全机重启和下一交易时段
+实时推进仍是明确未验证项。
+
 ## 网络边界
 
 当前只有 Wi-Fi station 与最小配网能力。为在不保存凭据、不擦除用户 NVS 的前提下验收，新固件可一次性读取冻结基线使用的 `wifi` NVS schema，然后交由 ESP-IDF Wi-Fi NVS 管理。这是数据兼容路径，不是 Xiaozhi runtime dependency。全新设备在无凭据时启动 ESP-IDF SmartConfig。

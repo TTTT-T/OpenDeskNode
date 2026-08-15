@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stock Gateway</title>
+  <style>
+    :root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { margin: 0; background: #f4f6f8; color: #1b2430; }
+    header { background: #152238; color: #fff; padding: 16px; position: sticky; top: 0; z-index: 2; }
+    header h1 { font-size: 20px; margin: 0 0 4px; }
+    header p { margin: 0; font-size: 12px; opacity: .78; }
+    main { max-width: 760px; margin: 0 auto; padding: 12px; }
+    section, .card { background: #fff; border-radius: 12px; box-shadow: 0 1px 5px #15223818; padding: 14px; margin: 0 0 12px; }
+    h2 { font-size: 16px; margin: 0 0 12px; }
+    h3 { font-size: 14px; margin: 0 0 8px; }
+    label { display: block; font-size: 12px; color: #566273; margin: 8px 0 4px; }
+    input, button { font: inherit; min-height: 42px; box-sizing: border-box; border-radius: 8px; }
+    input { width: 100%; border: 1px solid #c9d1da; padding: 8px 10px; }
+    button { border: 0; padding: 8px 12px; background: #1769e0; color: #fff; cursor: pointer; }
+    button.secondary { background: #e8edf3; color: #1b2430; }
+    button.danger { background: #b42318; }
+    button:disabled { opacity: .5; cursor: default; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .row > * { flex: 1; }
+    .row > button { flex: 0 0 auto; }
+    .device { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid #edf0f3; }
+    .device:last-child { border-bottom: 0; }
+    .device strong { display: block; }
+    .muted { color: #667085; font-size: 12px; }
+    .error { color: #b42318; font-size: 13px; min-height: 18px; }
+    .ok { color: #027a48; font-size: 13px; }
+    .slot { border: 1px solid #e2e7ed; border-radius: 10px; padding: 10px; margin: 8px 0; }
+    .slot-title { display: flex; justify-content: space-between; align-items: center; }
+    .slot-actions { display: flex; gap: 5px; }
+    .slot-actions button { min-height: 32px; padding: 4px 8px; }
+    .quote { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; border-bottom: 1px solid #edf0f3; padding: 8px 0; }
+    .quote:last-child { border-bottom: 0; }
+    .price { font-weight: 700; text-align: right; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; background: #f4f6f8; border-radius: 8px; padding: 8px; }
+    @media (min-width: 620px) { .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Stock Gateway</h1>
+    <p>LAN 管理 · API v1 · 不保存长期行情历史</p>
+  </header>
+  <main>
+    <div id="message" class="error"></div>
+    <section id="device-list-panel">
+      <h2>设备列表</h2>
+      <div id="device-list" class="muted">读取中…</div>
+      <h3 style="margin-top:14px">新增设备</h3>
+      <div class="row">
+        <input id="new-device-id" placeholder="device-b" maxlength="64" autocomplete="off">
+        <input id="new-device-name" placeholder="客厅看板" maxlength="80">
+        <button id="create-device">创建</button>
+      </div>
+    </section>
+
+    <section id="device-panel" hidden>
+      <div class="row">
+        <h2 id="device-title" style="margin-right:auto">设备</h2>
+        <button id="back" class="secondary">返回</button>
+      </div>
+      <div class="two-col">
+        <div>
+          <h3>固定四槽 watchlist</h3>
+          <div id="slots"></div>
+          <button id="save-watchlist">明确保存</button>
+          <div id="save-result" class="ok"></div>
+        </div>
+        <div>
+          <h3>状态与行情预览</h3>
+          <div id="status" class="muted">读取中…</div>
+          <div id="preview"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script>
+    (() => {
+      const state = { device: null, slots: [] };
+      const $ = (id) => document.getElementById(id);
+      const message = (text) => { $("message").textContent = text || ""; };
+      const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+      async function api(path, options) {
+        const response = await fetch(path, Object.assign({ headers: { "Content-Type": "application/json" } }, options || {}));
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(body.detail?.message || body.detail?.code || `HTTP ${response.status}`);
+        return body;
+      }
+      function renderDevices(devices) {
+        $("device-list").innerHTML = devices.length ? devices.map(device =>
+          `<div class="device"><div><strong>${escapeHtml(device.name)}</strong><span class="muted">${escapeHtml(device.device_id)} · ${device.watchlist.length} 槽</span></div><button data-open="${escapeHtml(device.device_id)}">打开</button></div>`
+        ).join("") : `<span class="muted">还没有设备</span>`;
+        document.querySelectorAll("[data-open]").forEach(button => button.addEventListener("click", () => openDevice(button.dataset.open)));
+      }
+      async function loadDevices() {
+        const body = await api("/api/v1/devices");
+        renderDevices(body.devices);
+      }
+      async function openDevice(deviceId) {
+        try {
+          const body = await api(`/api/v1/devices/${encodeURIComponent(deviceId)}`);
+          state.device = body.device;
+          state.slots = body.watchlist;
+          $("device-list-panel").hidden = true;
+          $("device-panel").hidden = false;
+          $("device-title").textContent = `${state.device.name} (${state.device.device_id})`;
+          renderSlots();
+          await refreshStatus();
+        } catch (error) { message(error.message); }
+      }
+      function renderSlots() {
+        $("slots").innerHTML = state.slots.map((slot, index) => `
+          <div class="slot" data-index="${index}">
+            <div class="slot-title"><strong>Slot ${slot.slot}</strong><span class="slot-actions">
+              <button class="secondary" data-up="${index}" ${index === 0 ? "disabled" : ""}>上移</button>
+              <button class="secondary" data-down="${index}" ${index === state.slots.length - 1 ? "disabled" : ""}>下移</button>
+            </span></div>
+            <label>六位 A 股代码</label>
+            <div class="row"><input data-symbol="${index}" value="${escapeHtml(slot.symbol)}" maxlength="6" inputmode="numeric"><button data-resolve="${index}" class="secondary">查询</button></div>
+            <div class="muted" data-name="${index}">${escapeHtml(slot.name || "尚未确认中文名")}</div>
+          </div>`).join("");
+        document.querySelectorAll("[data-up]").forEach(button => button.addEventListener("click", () => moveSlot(Number(button.dataset.up), -1)));
+        document.querySelectorAll("[data-down]").forEach(button => button.addEventListener("click", () => moveSlot(Number(button.dataset.down), 1)));
+        document.querySelectorAll("[data-resolve]").forEach(button => button.addEventListener("click", () => resolveSlot(Number(button.dataset.resolve))));
+      }
+      function moveSlot(index, direction) {
+        const target = index + direction;
+        if (target < 0 || target >= state.slots.length) return;
+        const temp = state.slots[index]; state.slots[index] = state.slots[target]; state.slots[target] = temp;
+        state.slots.forEach((slot, i) => { slot.slot = i + 1; });
+        renderSlots();
+      }
+      async function resolveSlot(index) {
+        const input = document.querySelector(`[data-symbol="${index}"]`);
+        try {
+          const body = await api(`/api/v1/symbols/resolve?symbol=${encodeURIComponent(input.value)}`);
+          state.slots[index].symbol = body.symbol.code;
+          state.slots[index].name = body.symbol.name;
+          renderSlots();
+          message(body.symbol.confirmed ? "已查询并获得中文名；请点击明确保存" : "代码有效但尚未获得中文名");
+        } catch (error) { message(error.message); }
+      }
+      async function saveWatchlist() {
+        try {
+          const body = await api(`/api/v1/devices/${encodeURIComponent(state.device.device_id)}/watchlist`, {
+            method: "POST",
+            body: JSON.stringify({ symbols: state.slots.map(slot => slot.symbol), names: state.slots.map(slot => slot.name || null) })
+          });
+          state.slots = body.slots;
+          $("save-result").textContent = "已立即保存到 SQLite；下一次 ESP 轮询即可看到。";
+          message("");
+          renderSlots();
+          await refreshStatus();
+        } catch (error) { $("save-result").textContent = ""; message(error.message); }
+      }
+      async function refreshStatus() {
+        const id = encodeURIComponent(state.device.device_id);
+        const [status, preview] = await Promise.all([api(`/api/v1/devices/${id}/status`), api(`/api/v1/devices/${id}/preview`) ]);
+        const device = status.selected_device;
+        $("status").innerHTML = `<div><strong>Market：</strong>${escapeHtml(status.calendar.session.state)} · next open ${escapeHtml(status.calendar.session.next_open_at)}</div><div><strong>设备：</strong>${escapeHtml(device.device_id)} · 4 股 · 最近 ESP 访问 ${escapeHtml(device.last_accessed_at || "从未")}</div><div><strong>最后刷新：</strong>${escapeHtml(status.service_state.last_refresh_at || "尚未成功")}</div><details><summary>Provider 状态</summary><pre>${escapeHtml(JSON.stringify(status.provider, null, 2))}</pre></details>`;
+        $("preview").innerHTML = `<h3 style="margin-top:12px">实际行情预览</h3>` + preview.quotes.map(quote => `<div class="quote"><div><strong>${escapeHtml(quote.name || quote.symbol)}</strong><div class="muted">${escapeHtml(quote.symbol)} · ${escapeHtml(quote.status)} · ${escapeHtml(quote.data_timestamp || "无源时间")}</div></div><div class="price">${quote.current_price == null ? "—" : quote.current_price}<br><span class="muted">${quote.change_percent == null ? "—" : quote.change_percent.toFixed(2) + "%"}</span></div></div>`).join("");
+      }
+      $("create-device").addEventListener("click", async () => {
+        try {
+          await api("/api/v1/devices", { method: "POST", body: JSON.stringify({ device_id: $("new-device-id").value, name: $("new-device-name").value }) });
+          $("new-device-id").value = ""; $("new-device-name").value = ""; message(""); await loadDevices();
+        } catch (error) { message(error.message); }
+      });
+      $("save-watchlist").addEventListener("click", saveWatchlist);
+      $("back").addEventListener("click", () => { $("device-panel").hidden = true; $("device-list-panel").hidden = false; message(""); loadDevices().catch(error => message(error.message)); });
+      loadDevices().catch(error => message(error.message));
+    })();
+  </script>
+</body>
+</html>

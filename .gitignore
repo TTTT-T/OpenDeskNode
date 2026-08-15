@@ -10,6 +10,8 @@ firmware/xiaozhi/sdkconfig.old
 .env.*
 !.env.example
 data/.config.yaml
+data/stock-gateway.sqlite3*
+data/stock-gateway/
 
 # macOS and editor state
 .DS_Store

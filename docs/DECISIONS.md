@@ -31,6 +31,20 @@
    - Stock Service 只依赖 `resolve_symbol`、`get_quotes`、`get_intraday` 三项 Provider 操作；不把候选库的原始字段或调用方式泄漏到上层。
    - 每个 adapter 在边界内把 provider-specific symbol、字段和时间转换为 canonical `Quote` / `IntradayBar`；本阶段不实现完整 Gateway、cache、watchlist、web 管理或复杂 routing。
    - Provider 与行情凭据只存在服务端，ESP32 仍不直连行情 Provider。
+9. **Phase 1D 先交付 LAN-only 模块化单体**（已在 TerrenceNAS 验收）
+   - Stock Gateway 使用 FastAPI/Pydantic + stdlib SQLite repository；设备固定四槽
+     由 SQLite CHECK/唯一性约束保证，snapshot 只保留每个 symbol 的最新 quote、
+     当前 session intraday 与 freshness，不建立长期行情历史。
+   - Provider 组合固定为 easyquotation/Tencent quote primary、Baidu direct
+     intraday supplementary、adata/Sina quote fallback；fallback 只按单股失败
+     触发，不引入通用 routing framework，状态证据不足时保留 `UNKNOWN`。
+   - XSHG session 采用 `exchange-calendars` 历史日历加 pinned
+     `chinese-calendar` 当前节假日覆盖；LAN hostname 由 NAS/QNAP 实际网络提供，
+     容器不伪造 `stock-gateway.local`。API 暂不登录是已确认的 LAN 边界，不等于
+     允许公网暴露。
+   - 当前部署使用 `terrencenas.local:8000`、Docker named volume、healthcheck 与
+     `restart: unless-stopped`；容器重启持久化和主进程异常退出自动恢复已实测。
+     NAS 全机重启与下一交易时段行情推进没有伪装为已通过。
 
 ## 已被替代（仅历史）
 

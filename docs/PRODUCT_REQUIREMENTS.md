@@ -24,34 +24,45 @@
 5. Provider adapter 的最小操作为 `resolve_symbol`、`get_quotes`、`get_intraday`；adapter 将各来源的字段转换为统一 canonical Quote/Intraday。
 6. Provider 选择、调用频率与失败降级由 Gateway 负责；本阶段不要求 ESP32 直连、持有 token 或理解 provider-specific 字段。
 
+### Phase 1D Gateway 交付边界（已在 NAS 验收）
+
+7. Gateway 使用版本化 HTTP/JSON dashboard；每个 `device_id` 独立保存恰好四个
+   有序且唯一的 slot，保存 watchlist 后无需重新烧录即可供下一次 ESP 轮询读取。
+8. Gateway 保存每只股票最后成功 snapshot（quote、当前交易日分钟数组、真实
+   data timestamp、`last_success_at` 和 freshness），Provider 暂时不可用时保留
+   SQLite 旧数据，不建立长期历史行情库。
+9. Gateway 的已确认实现组合为 easyquotation/Tencent quote primary、Baidu direct
+   intraday supplementary、adata/Sina quote fallback；缺少可靠状态证据时保持
+   `UNKNOWN`。LAN 内暂不登录，但不把服务设计为公网暴露。
+
 ### 每只股票的展示（无详情页）
 
-7. v1 没有股票详情页；任何按键都不进入单股详情界面。
-8. 每只股票显示：中文名称（不显示股票代码）、现价、涨跌额、涨跌幅。
-9. 涨跌用前缀符号表达，不依赖颜色（单色 RLCD）：上涨 `▲ +1.25%`，下跌 `▼ -0.86%`。
-10. 每只股票一条日内分时 sparkline，以昨收价为基线。
-11. 每只股票带市场状态：`NORMAL` / `LIMIT_UP` / `LIMIT_DOWN` / `SUSPENDED`。
+10. v1 没有股票详情页；任何按键都不进入单股详情界面。
+11. 每只股票显示：中文名称（不显示股票代码）、现价、涨跌额、涨跌幅。
+12. 涨跌用前缀符号表达，不依赖颜色（单色 RLCD）：上涨 `▲ +1.25%`，下跌 `▼ -0.86%`。
+13. 每只股票一条日内分时 sparkline，以昨收价为基线。
+14. 每只股票带市场状态：`NORMAL` / `LIMIT_UP` / `LIMIT_DOWN` / `SUSPENDED`。
 
 ### 刷新与可读性
 
-12. 刷新目标约 10 秒（最终由数据源配额与真机实测微调）。
-13. 2–3 米外一眼可读（glance readability）。
-14. 信息密度均衡：不过载也不空旷；像素级排版在真机上调优。
+15. 刷新目标约 10 秒（最终由数据源配额与真机实测微调）。
+16. 2–3 米外一眼可读（glance readability）。
+17. 信息密度均衡：不过载也不空旷；像素级排版在真机上调优。
 
 ### 交互与开机行为
 
-15. 开机自动行为：上电后自动连接 Wi-Fi 并进入看板，无需人工操作。
-16. BOOT 键后续作为设置入口；在承担该职责之前，固件只保留按键捕获。
+18. 开机自动行为：上电后自动连接 Wi-Fi 并进入看板，无需人工操作。
+19. BOOT 键后续作为设置入口；在承担该职责之前，固件只保留按键捕获。
 
 ### 失败与降级
 
-17. 行情失败时保留最后一次成功数据继续显示，并显示最后更新时间；失败未超过 5 分钟不显示错误；超过 5 分钟显示全局失败状态。
+20. 行情失败时保留最后一次成功数据继续显示，并显示最后更新时间；失败未超过 5 分钟不显示错误；超过 5 分钟显示全局失败状态。
 
 ### 市场时段
 
-18. 盘前：显示盘前市场状态与开盘倒计时。
-19. 午间：显示“午间休市”和下午开盘倒计时。
-20. 周末与节假日：待机显示（standby）。
+21. 盘前：显示盘前市场状态与开盘倒计时。
+22. 午间：显示“午间休市”和下午开盘倒计时。
+23. 周末与节假日：待机显示（standby）。
 
 ## 已确认：明确延后（不属于 v1）
 
@@ -74,7 +85,7 @@
 
 ## 待定项（不得当作已确认）
 
-- 行情 Provider 选型与 Gateway 部署位置（Phase 1D 决策）。
+- 语音 Gateway 与 Stock Gateway 的最终部署合并方式（Voice 阶段决策）。
 - 语音链路的音频格式、延迟与会话协议（Voice 2A 后决策）。
 
 ## 安全与凭据约束
