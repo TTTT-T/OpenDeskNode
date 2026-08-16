@@ -6,7 +6,17 @@
 
 ## 当前 Phase
 
-**[Phase 1E — Live Stock Dashboard](PHASE1E_LIVE_STOCK_DASHBOARD.md)** — 已完成并验收。
+**[Phase 2A — Voice Hardware Bring-up](PHASE2A_VOICE_HARDWARE_BRINGUP.md)** —
+已完成，等待用户验收（报告：[PHASE2A_REPORT.md](PHASE2A_REPORT.md)）。
+14 项可执行验收全部 PASS：ES7210/ES8311+I2S 全双工打通；双麦独立性
+（位相同率 2.5%、最小窗残差 0.0195）与 AEC 参考有效性（活动对比
+23.4 dB、声学延迟 15 样本）有 WAV 级证据；设备端 esp-sr AEC ERLE
+32.5 dB；BOOT 单按/双击实测通过；63 分钟稳定期资源平稳（internal
+起止差 12 B，PSRAM 持平），股票看板 405/405 轮询 `ESP_OK`。
+未进入 Phase 2B；等待用户验收后归档。
+
+### Phase 1E（已完成并验收，2026-08-16）
+
 用户于 2026-08-16 要求继续开发，原“停在 Phase 1D”指令已解除；本阶段只完成
 ESP32 读取自有 LAN Stock Gateway 的真实 4 股看板，不进入 Voice 2A。
 
@@ -17,6 +27,8 @@ ESP32 读取自有 LAN Stock Gateway 的真实 4 股看板，不进入 Voice 2A�
 无缺字、截断或重叠。验收报告见
 [Phase 1E 报告](phase-reports/phase-01e-live-stock-dashboard.md)；下一交易时段
 实时推进仍是独立补测。
+（2026-08-16 复核：`verify-phase-1e.sh` 与 34 项 Gateway 测试在干净 venv
+中重跑全部通过。）
 
 Phase 1C 已完成并验收（commit `c2031a7`）；Phase 1D.0 已完成并验收
 （commit `9546c90`），推荐 quote primary easyquotation/Tencent、intraday
@@ -123,6 +135,7 @@ easyquotation/Tencent 和 Baidu direct 做真实、低频、短连续调用，�
 
 ## 最近完成
 
+- [Phase 2A — Voice Hardware Bring-up](PHASE2A_REPORT.md)（2026-08-17，待用户验收）
 - [Phase 1E — Live Stock Dashboard](phase-reports/phase-01e-live-stock-dashboard.md)（2026-08-16）
 - [Phase 1D — Stock Gateway](phase-reports/phase-01d-stock-gateway.md)（2026-08-16）
 - [Phase 1D.0 — A-share Provider Bake-off](phase-reports/phase-01d0-provider-bakeoff.md)（2026-08-15）
@@ -135,14 +148,18 @@ easyquotation/Tencent 和 Baidu direct 做真实、低频、短连续调用，�
 
 ## 下一步
 
-停在 Phase 1E 验收边界，不自行进入 Voice 2A。下一交易时段补测 Gateway
-quote/分钟实时推进；Voice 2A 开始前按硬件文档确认 codec、I2S、麦克风和
-扬声器边界。NAS 全机重启会影响其他服务，仍需单独确认。
+Phase 2A 已完成待用户验收；验收通过后停在 2A 边界，不自行进入
+Phase 2B。2B 前置检查：AEC 模式/NLP 档位对比选型、24 kHz 需求评估
+（esp-sr AEC 限 16 kHz）。下一交易时段补测 Gateway quote/分钟实时
+推进仍保留。
 
 ## 重要风险与未验证
 
+- 2A 遗留：串口 WAV 协议在 >16 kHz/更多通道时需重新限速评估；AEC 仅验
+  证 VOIP_HIGH_PERF 模式；音量 0 对照实验 inconclusive（底噪主导，不用
+  作证据）。详见 [PHASE2A_REPORT.md](PHASE2A_REPORT.md) 已知问题节。
 - RLCD 中文字体、2–3 米可读性、信息密度与持续刷新/残影（1C 真机验证）。
-- 音频链路（双麦/参考通道、ES7210、ES8311、扬声器、AEC、VAD、唤醒词）、电池、RTC、SHTC3、TF 卡、业务负载下的内存与长稳。
+- 电池、RTC、SHTC3、TF 卡未接入验证（不在 1/2A 范围）。
 - 当前有界组合建议为 quote primary easyquotation/Tencent、intraday supplementary
   Baidu direct、quote fallback adata/Sina；这不是完整 Gateway routing。
 - 2026-08-15 周六只验证了上一交易日（2026-08-14）分钟数据；尚未验证交易时段

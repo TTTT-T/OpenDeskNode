@@ -5,6 +5,9 @@ firmware/xiaozhi/managed_components/
 firmware/xiaozhi/sdkconfig
 firmware/xiaozhi/sdkconfig.old
 
+# Phase evidence artifacts (large logs/wavs; hashes recorded in phase reports)
+artifacts/
+
 # Local configuration and secrets
 .env
 .env.*

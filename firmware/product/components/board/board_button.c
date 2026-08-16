@@ -11,6 +11,7 @@
 
 static const char *TAG = "board_button";
 static const TickType_t DEBOUNCE_TICKS = pdMS_TO_TICKS(50);
+static const TickType_t DOUBLE_PRESS_TICKS = pdMS_TO_TICKS(400);
 static QueueHandle_t s_button_events;
 static board_button_callback_t s_callback;
 
@@ -39,15 +40,39 @@ static void boot_button_task(void *arg)
         if (have_last_press && (now - last_press) < DEBOUNCE_TICKS) {
             continue;
         }
-        last_press = now;
-        have_last_press = true;
 
         /* Confirm the active-low level after the debounce window. */
         vTaskDelay(DEBOUNCE_TICKS);
-        if (gpio_get_level(BOARD_BOOT_BUTTON_GPIO) == 0) {
-            ESP_LOGI(TAG, "BOOT press");
-            s_callback();
+        if (gpio_get_level(BOARD_BOOT_BUTTON_GPIO) != 0) {
+            last_press = now;
+            have_last_press = true;
+            continue;
         }
+
+        /*
+         * Wait briefly for a second confirmed press to classify the event as
+         * a double press; otherwise report a single press.
+         */
+        board_button_event_t kind = BOARD_BUTTON_PRESS;
+        while ((xTaskGetTickCount() - now) < DOUBLE_PRESS_TICKS) {
+            TickType_t probe_at = xTaskGetTickCount();
+            if (xQueueReceive(s_button_events, &event,
+                              DOUBLE_PRESS_TICKS - (probe_at - now)) == pdTRUE) {
+                if (gpio_get_level(BOARD_BOOT_BUTTON_GPIO) == 0) {
+                    kind = BOARD_BUTTON_DOUBLE_PRESS;
+                    break;
+                }
+            }
+        }
+
+        last_press = xTaskGetTickCount();
+        have_last_press = true;
+        if (kind == BOARD_BUTTON_DOUBLE_PRESS) {
+            ESP_LOGI(TAG, "BOOT double press");
+        } else {
+            ESP_LOGI(TAG, "BOOT press");
+        }
+        s_callback(kind);
     }
 }
 

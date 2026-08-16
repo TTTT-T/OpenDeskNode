@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "audio_selftest.h"
 #include "board.h"
 #include "display.h"
 #include "esp_check.h"
@@ -46,11 +47,16 @@ static bool report_memory_baseline(void)
     return psram_bytes == EXPECTED_PSRAM_BYTES;
 }
 
-static void on_boot_button_pressed(void)
+static void on_boot_button_pressed(board_button_event_t event)
 {
-    /* Phase 1C: capture only. Settings entry comes in a later phase. */
-    ESP_LOGI(TAG, "BOOT button press captured (settings entry not implemented)");
-    display_set_button_status("Pressed");
+    /* Phase 2A: single press re-runs the audio self-test, double press
+     * toggles the speaker volume as audible button evidence. */
+    if (event == BOARD_BUTTON_DOUBLE_PRESS) {
+        audio_selftest_toggle_volume();
+    } else {
+        audio_selftest_request_rerun();
+    }
+    display_set_button_status(event == BOARD_BUTTON_DOUBLE_PRESS ? "2xPress" : "Pressed");
 }
 
 static void on_wifi_status_changed(network_status_t status)
@@ -70,6 +76,10 @@ void app_main(void)
     /* The task owns its placeholder, HTTP/JSON conversion, last-good model,
      * and all LVGL stock updates; app_main never touches stock widgets. */
     ESP_ERROR_CHECK(stock_service_start());
+
+    /* Phase 2A: audio hardware bring-up runs after the dashboard task is up;
+     * BOOT re-triggers the audio self-test at any time. */
+    ESP_ERROR_CHECK(audio_selftest_start());
 
     ESP_ERROR_CHECK(board_button_init(on_boot_button_pressed));
     ESP_ERROR_CHECK(network_init(on_wifi_status_changed));
