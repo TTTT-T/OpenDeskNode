@@ -5,7 +5,7 @@ import unittest
 
 from gateway.calendar import MarketSessionClock, WeekdayCalendar, SHANGHAI_TZ
 from gateway.config import GatewayConfig
-from gateway.models import GatewaySnapshot
+from gateway.models import GatewayBar, GatewaySnapshot
 from gateway.repository import SQLiteRepository
 from gateway.service import StockGatewayService
 from gateway.stock_provider.models import IntradayBar, Quote, SymbolRef
@@ -178,6 +178,13 @@ class GatewayRefreshTests(unittest.TestCase):
         )
         self.assertEqual(dashboard["quotes"][0]["current_price"], 123.0)
         self.assertFalse(dashboard["stale"])
+        self.assertNotIn("next_open_in_seconds", dashboard)
+        compact = service.dashboard(
+            "device-a",
+            datetime(2026, 8, 17, 9, 4, tzinfo=SHANGHAI_TZ),
+            intraday_samples=32,
+        )
+        self.assertEqual(compact["next_open_in_seconds"], 1560)
         stale = service.dashboard(
             "device-a", datetime(2026, 8, 17, 9, 6, tzinfo=SHANGHAI_TZ)
         )
@@ -198,6 +205,50 @@ class GatewayRefreshTests(unittest.TestCase):
         )
         self.assertEqual(fallback["quotes"][0]["current_price"], 123.0)
         self.assertEqual(fallback["quotes"][0]["data_timestamp"], "2026-08-17T09:00:00+08:00")
+
+    def test_dashboard_downsamples_intraday_evenly_and_preserves_endpoints(self):
+        temporary, repository, service = self.make(FakeCoordinator())
+        self.addCleanup(temporary.cleanup)
+        bars = tuple(
+            GatewayBar(
+                timestamp="2026-08-17T%02d:%02d:00+08:00" % (9 + index // 60, index % 60),
+                price=100.0 + index / 100.0,
+                open=None,
+                high=None,
+                low=None,
+                close=100.0 + index / 100.0,
+                volume=None,
+                amount=None,
+                source="fixture",
+            )
+            for index in range(240)
+        )
+        repository.upsert_snapshot(
+            GatewaySnapshot(
+                symbol="600519",
+                name="贵州茅台",
+                current_price=102.39,
+                previous_close=100.0,
+                intraday=bars,
+                intraday_session_date="2026-08-17",
+                last_success_at="2026-08-17T10:00:00+08:00",
+            )
+        )
+
+        full = service.dashboard(
+            "device-a", datetime(2026, 8, 17, 10, 0, tzinfo=SHANGHAI_TZ)
+        )
+        bounded = service.dashboard(
+            "device-a",
+            datetime(2026, 8, 17, 10, 0, tzinfo=SHANGHAI_TZ),
+            intraday_samples=32,
+        )
+
+        self.assertEqual(len(full["quotes"][0]["intraday"]), 240)
+        self.assertEqual(len(bounded["quotes"][0]["intraday"]), 32)
+        self.assertEqual(len(bounded["intraday"][0]["bars"]), 32)
+        self.assertEqual(bounded["quotes"][0]["intraday"][0], bars[0].to_dict())
+        self.assertEqual(bounded["quotes"][0]["intraday"][-1], bars[-1].to_dict())
 
     def test_refresh_lifecycle_starts_and_stops_cleanly(self):
         temporary, repository, service = self.make(FakeCoordinator())

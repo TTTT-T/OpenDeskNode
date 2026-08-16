@@ -1,6 +1,6 @@
 # 当前有效决策
 
-最后核验：2026-08-15
+最后核验：2026-08-16
 
 本文件是“当前哪些长期决策有效”的 canonical 入口，只汇总现状。完整背景、候选方案与决策历史见 [decisions/](decisions/README.md)；本文件不替代 ADR。
 
@@ -45,6 +45,15 @@
    - 当前部署使用 `terrencenas.local:8000`、Docker named volume、healthcheck 与
      `restart: unless-stopped`；容器重启持久化和主进程异常退出自动恢复已实测。
      NAS 全机重启与下一交易时段行情推进没有伪装为已通过。
+10. **Phase 1E 使用有界 HTTP 轮询与 last-good 降级**（当前 Phase 实现）
+   - 默认 Phase 1D dashboard 保持兼容；ESP32 通过可选
+     `intraday_samples=32` 获取端点保持的有界投影，约 10 秒轮询。
+   - 固件严格解析 schema v1 和恰好四股，只在 Wi-Fi 就绪后访问 Kconfig
+     配置的 LAN Gateway；不直连 Provider，也不从价格猜特殊状态。
+   - 失败保留最后成功数据，5 分钟宽限期内不显示错误，超过后显示最后成功
+     时间；Gateway canonical stale 立即进入同一状态。
+   - Web 动态换股使用固定基础中文字体覆盖（ASCII、U+4E00–U+9FEF、涨跌
+     箭头），不维护股票名称白名单；区间外字符不承诺显示。
 
 ## 已被替代（仅历史）
 

@@ -1,6 +1,6 @@
 # 当前系统架构
 
-最后核验：2026-08-15
+最后核验：2026-08-16
 
 ## 固件基线与边界
 
@@ -15,7 +15,7 @@ firmware/product
 │  ├─ board/            Waveshare GPIO 与 BOOT 键
 │  ├─ display/          ST7305 RLCD + LVGL 最小页面
 │  ├─ network/          NVS、event loop、Wi-Fi station/最小配网
-│  └─ stock/            Phase 1C model/mock/view/service 与 host test
+│  └─ stock/            model/view、Gateway HTTP/JSON client 与 host test
 ├─ partitions.csv       16 MB Flash、单 factory app、无 OTA
 └─ sdkconfig.defaults   ESP32-S3、octal 8 MB PSRAM、DIO 80 MHz
 ```
@@ -26,18 +26,24 @@ firmware/product
 app_main
   ├─ flash / PSRAM runtime check
   ├─ display_init → esp_lcd SPI → ST7305 → LVGL clean page
-  ├─ stock_service_start → stock_svc task（8192 B 栈预算：view 创建、
-  │  mock reset、首屏刷新 → 约 10 秒确定性轮换与指标日志）
+  ├─ stock_service_start → stock_svc task（16384 B 栈预算：view 创建、
+  │  Wi-Fi 就绪检查、约 10 秒 Gateway 轮询、解析/降级、刷新与指标日志）
   ├─ board_button_init → GPIO ISR → debounced event callback
   └─ network_init → NVS + netif + event loop → Wi-Fi station
 ```
 
-Phase 1C 的当前工作树实现把股票显示限制在 `components/stock/`：`stock_model.c`
-和 `stock_mock.c` 保持纯 C99、可在主机编译；`stock_view.c` 只通过 display
-组件持有的 LVGL 锁创建/更新 2×2 面板；`stock_service.c` 的 service task 在
-其明确栈预算内完成 view 创建、mock reset 与首屏更新，并负责约 10 秒的
-确定性 mock 场景轮换和刷新指标日志。display 组件只提供 RLCD
-传输、LVGL 锁和全帧刷新指标，不承载股票业务模型。
+Phase 1E 当前实现仍把股票业务限制在 `components/stock/`：`stock_model.c` 与
+测试用 `stock_mock.c` 保持纯 C99；`stock_gateway_client.c` 只访问配置的 LAN
+Gateway，`stock_gateway_parser.c` 严格转换 schema v1；`stock_view.c` 只通过
+display 组件持有的 LVGL 锁更新 2×2 面板。service 在首次成功前显示连接态，
+成功后保留 last-good snapshot；本地连续失败超过 5 分钟或 Gateway 报 stale
+才进入全局异常。display 组件仍只提供 RLCD 传输、LVGL 锁和刷新指标。
+
+Gateway dashboard 默认响应保持 Phase 1D 兼容；ESP32 请求可选
+`intraday_samples=32` 投影，四股各保留最多 32 个顺序点及首尾点。市场 session、
+下次开盘秒数和最后成功时间由 Gateway canonical 数据提供，固件不从价格猜状态。
+24 px 字体固定覆盖 ASCII、U+4E00–U+9FEF 与涨跌箭头，Web 切换常规 A 股简称
+不再依赖固件名称白名单。
 
 Phase 1C 已由 commit `c2031a7` 完成并验收。启动边界已是 task-owned：
 view 创建、mock reset 与首屏刷新都在具有明确栈预算（8192 字节）的 stock

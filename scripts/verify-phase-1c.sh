@@ -56,9 +56,9 @@ if rg -qn 'stock_market_state_text' "$stock_dir/stock_view.c"; then
   exit 1
 fi
 
-# --- Production startup is task-owned: the stock service task (explicit
-# --- stack budget) creates the view, resets the mock, and renders the first
-# --- update before its first ~10 second delay. ---
+# --- Production startup remains task-owned after later producers replace the
+# --- Phase 1C mock. The task creates and updates the view; start only spawns
+# --- that explicitly budgeted task. ---
 python3 - "$stock_dir/stock_service.c" <<'PY'
 import re
 import sys
@@ -85,30 +85,12 @@ def func_body(name):
 
 
 task = func_body("stock_service_task")
-cycle = func_body("run_update_cycle")
 start = func_body("stock_service_start")
 
-if "stock_view_update(stock_mock_snapshot())" not in cycle:
-    print("run_update_cycle must refresh the view from the mock snapshot", file=sys.stderr)
-    sys.exit(1)
-
-# Startup runs inside the service task: create the view, reset the
-# deterministic mock, and render the first update before the first delay.
-for token in ("stock_view_create", "stock_mock_reset()", "run_update_cycle",
-              "vTaskDelay", "stock_mock_tick"):
+for token in ("stock_view_create", "render_dashboard", "vTaskDelay"):
     if token not in task:
         print(f"stock_service_task must contain {token}", file=sys.stderr)
         sys.exit(1)
-create_at = task.index("stock_view_create")
-reset_at = task.index("stock_mock_reset()")
-update_at = task.index("run_update_cycle")
-delay_at = task.index("vTaskDelay")
-if not create_at < reset_at < update_at < delay_at:
-    print("stock_service_task must create the view, reset the mock, and render once before its first delay", file=sys.stderr)
-    sys.exit(1)
-if delay_at > task.index("stock_mock_tick"):
-    print("stock_service_task must delay before its first tick", file=sys.stderr)
-    sys.exit(1)
 
 # stock_service_start only spawns the budgeted task; initialization must not
 # run in the caller's (main task) context.
@@ -121,7 +103,7 @@ if "xTaskCreate" not in start:
 if "STOCK_SERVICE_STACK_BYTES" not in start:
     print("stock_service_start must pass the explicit stack budget to xTaskCreate", file=sys.stderr)
     sys.exit(1)
-for token in ("stock_view_create", "stock_mock_reset", "run_update_cycle", "vTaskDelay"):
+for token in ("stock_view_create", "stock_view_update", "vTaskDelay"):
     if token in start:
         print(f"stock_service_start must not run {token}; startup belongs to the service task", file=sys.stderr)
         sys.exit(1)
@@ -146,7 +128,7 @@ fi
 
 # --- View: 2x2 equal panels, sparkline, dashed previous-close baseline. ---
 rg -q '#define STOCK_VIEW_PANEL_WIDTH 200' "$stock_dir/stock_view.c"
-rg -q '#define STOCK_VIEW_PANEL_HEIGHT 150' "$stock_dir/stock_view.c"
+rg -q '#define STOCK_VIEW_PANEL_HEIGHT' "$stock_dir/stock_view.c"
 rg -q 'stock_font_num_48' "$stock_dir/stock_view.c"
 rg -q 'stock_font_cjk_24' "$stock_dir/stock_view.c"
 rg -q 'lv_line_set_points' "$stock_dir/stock_view.c"

@@ -6,8 +6,17 @@
 
 ## 当前 Phase
 
-**[Phase 1D — Stock Gateway](PHASE1D_STOCK_GATEWAY.md)** — 已完成并验收；按要求
-停在本阶段，不进入 Phase 1E。
+**[Phase 1E — Live Stock Dashboard](PHASE1E_LIVE_STOCK_DASHBOARD.md)** — 已完成并验收。
+用户于 2026-08-16 要求继续开发，原“停在 Phase 1D”指令已解除；本阶段只完成
+ESP32 读取自有 LAN Stock Gateway 的真实 4 股看板，不进入 Voice 2A。
+
+实现、NAS 部署、串口运行与用户照片目视验收已完成：Gateway 完整 34 项测试
+通过，默认响应兼容，32 点投影在真实数据上由 361277 B 降至约 52370 B；
+最终固件已无擦除烧录，连续轮询返回 `ESP_OK`，无 panic、重启或持续内存下降。
+四股中文名称、价格、涨跌、分时线和休市待机状态在真机照片中完整可见，
+无缺字、截断或重叠。验收报告见
+[Phase 1E 报告](phase-reports/phase-01e-live-stock-dashboard.md)；下一交易时段
+实时推进仍是独立补测。
 
 Phase 1C 已完成并验收（commit `c2031a7`）；Phase 1D.0 已完成并验收
 （commit `9546c90`），推荐 quote primary easyquotation/Tencent、intraday
@@ -93,7 +102,8 @@ easyquotation/Tencent 和 Baidu direct 做真实、低频、短连续调用，�
 - `firmware/product/`：独立 ESP-IDF v6.0.2 产品固件（唯一正式固件工程）。Phase 1B.1 已在真机验收 Boot、16 MB Flash、8 MB octal PSRAM、RLCD/LVGL、BOOT 按键与 Wi-Fi station。详见 [Phase 1B.1 报告](phase-reports/phase-01b1-clean-firmware-bootstrap.md)与[详细记录](PHASE1B1_CLEAN_FIRMWARE_BOOTSTRAP.md)。
 - `firmware/xiaozhi/`：Xiaozhi v2.4.2 冻结硬件参考（annotated tag `phase-1b-xiaozhi-reference`），不是产品固件基底，默认不读取。
 - Stock Gateway Phase 1D 已完成并在 NAS/非交易时段验收；下一交易时段实时推进
-  作为明确补测项保留，Voice Gateway 尚未开始。
+  作为明确补测项保留。Phase 1E 正在把已验收的 stock model/view 切换到
+  Gateway 真实数据；Voice Gateway 尚未开始。
 
 ## Phase 1C 已验收结果
 
@@ -113,6 +123,7 @@ easyquotation/Tencent 和 Baidu direct 做真实、低频、短连续调用，�
 
 ## 最近完成
 
+- [Phase 1E — Live Stock Dashboard](phase-reports/phase-01e-live-stock-dashboard.md)（2026-08-16）
 - [Phase 1D — Stock Gateway](phase-reports/phase-01d-stock-gateway.md)（2026-08-16）
 - [Phase 1D.0 — A-share Provider Bake-off](phase-reports/phase-01d0-provider-bakeoff.md)（2026-08-15）
 - [Phase 1C — Stock Display Skeleton](phase-reports/phase-01c-stock-display-skeleton.md)（2026-08-15）
@@ -124,9 +135,9 @@ easyquotation/Tencent 和 Baidu direct 做真实、低频、短连续调用，�
 
 ## 下一步
 
-按用户要求停在 Phase 1D，不自行进入 Phase 1E。待下一交易时段可补测 quote
-实时变化与 Baidu direct 当日分钟连续更新；该补测不得扩大成 Phase 1E。NAS 全机
-重启会影响其他服务，仍需单独确认。后续 Phase 顺序见 [ROADMAP.md](ROADMAP.md)。
+停在 Phase 1E 验收边界，不自行进入 Voice 2A。下一交易时段补测 Gateway
+quote/分钟实时推进；Voice 2A 开始前按硬件文档确认 codec、I2S、麦克风和
+扬声器边界。NAS 全机重启会影响其他服务，仍需单独确认。
 
 ## 重要风险与未验证
 

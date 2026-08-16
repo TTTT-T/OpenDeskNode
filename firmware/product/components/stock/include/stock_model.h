@@ -14,11 +14,12 @@
 #include <stdint.h>
 
 #define STOCK_COUNT 4
-#define STOCK_NAME_MAX_BYTES 16
+#define STOCK_NAME_MAX_BYTES 32
 #define STOCK_INTRADAY_SAMPLES 32
 
 typedef enum {
-    STOCK_MARKET_NORMAL = 0,
+    STOCK_MARKET_UNKNOWN = 0,
+    STOCK_MARKET_NORMAL,
     STOCK_MARKET_LIMIT_UP,
     STOCK_MARKET_LIMIT_DOWN,
     STOCK_MARKET_SUSPENDED,
@@ -32,6 +33,12 @@ typedef enum {
     STOCK_SESSION_CLOSED,
     STOCK_SESSION_STANDBY,
 } stock_session_t;
+
+typedef enum {
+    STOCK_DATA_STARTING = 0,
+    STOCK_DATA_FRESH,
+    STOCK_DATA_STALE,
+} stock_data_state_t;
 
 /* Price in fixed-point cents (2 decimals); 1735.50 CNY == 173550. */
 typedef int32_t stock_price_t;
@@ -48,6 +55,14 @@ typedef struct {
 typedef struct {
     stock_quote_t quotes[STOCK_COUNT];
     stock_session_t session;
+    stock_data_state_t data_state;
+    bool has_data;
+    /* HH:MM extracted from the Gateway's canonical next_open_at. */
+    char next_open_time[6];
+    /* Whole minutes until the next market open, rounded up. */
+    uint32_t next_open_minutes;
+    /* HH:MM extracted from freshness.last_success_at. */
+    char last_success_time[6];
     /* Uptime milliseconds of the last successful data refresh (0 = never). */
     int64_t last_success_update_ms;
 } stock_dashboard_t;
@@ -80,3 +95,16 @@ void stock_format_change_percent(char *buffer, size_t size, const stock_quote_t 
  */
 void stock_format_change_percent_with_state(char *buffer, size_t size,
                                             const stock_quote_t *quote);
+
+/** Product-visible global data/session line for the middle status strip. */
+void stock_format_dashboard_banner(char *buffer, size_t size,
+                                   const stock_dashboard_t *dashboard);
+
+/**
+ * Apply the local failure grace period without clearing the last-good quotes.
+ * Returns true only when the visible state changes to STALE.
+ */
+bool stock_dashboard_apply_failure(stock_dashboard_t *dashboard,
+                                   int64_t now_ms,
+                                   int64_t service_started_ms,
+                                   int64_t stale_after_ms);

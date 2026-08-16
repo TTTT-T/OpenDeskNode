@@ -70,6 +70,26 @@ class GatewayAPITests(unittest.TestCase):
             touched = client.get("/api/v1/devices/device-a").json()["device"]["last_accessed_at"]
             self.assertIsNotNone(touched)
 
+            bounded = client.get(
+                "/api/v1/dashboard/device-a?intraday_samples=32"
+            )
+            self.assertEqual(bounded.status_code, 200)
+            self.assertTrue(
+                all(len(quote["intraday"]) <= 32 for quote in bounded.json()["quotes"])
+            )
+            self.assertEqual(
+                client.get(
+                    "/api/v1/dashboard/device-a?intraday_samples=1"
+                ).status_code,
+                422,
+            )
+            self.assertEqual(
+                client.get(
+                    "/api/v1/dashboard/device-a?intraday_samples=65"
+                ).status_code,
+                422,
+            )
+
     def test_device_crud_resolve_confirm_save_and_reorder(self):
         temporary, client = self.make_client()
         self.addCleanup(temporary.cleanup)

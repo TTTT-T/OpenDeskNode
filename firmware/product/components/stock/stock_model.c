@@ -45,10 +45,68 @@ const char *stock_market_state_text(stock_market_state_t state)
         return "跌停";
     case STOCK_MARKET_SUSPENDED:
         return "停牌";
+    case STOCK_MARKET_UNKNOWN:
     case STOCK_MARKET_NORMAL:
     default:
         return "";
     }
+}
+
+void stock_format_dashboard_banner(char *buffer, size_t size,
+                                   const stock_dashboard_t *dashboard)
+{
+    if (dashboard->data_state == STOCK_DATA_STALE) {
+        snprintf(buffer, size, "行情异常 %s",
+                 dashboard->last_success_time[0]
+                     ? dashboard->last_success_time
+                     : "--:--");
+        return;
+    }
+    if (dashboard->data_state == STOCK_DATA_STARTING || !dashboard->has_data) {
+        snprintf(buffer, size, "连接中");
+        return;
+    }
+
+    switch (dashboard->session) {
+    case STOCK_SESSION_OPEN:
+        snprintf(buffer, size, "交易中");
+        break;
+    case STOCK_SESSION_PRE_MARKET:
+        snprintf(buffer, size, "盘前 %lum",
+                 (unsigned long)dashboard->next_open_minutes);
+        break;
+    case STOCK_SESSION_LUNCH_BREAK:
+        snprintf(buffer, size, "午间休市 %lum",
+                 (unsigned long)dashboard->next_open_minutes);
+        break;
+    case STOCK_SESSION_CLOSED:
+        snprintf(buffer, size, "已收盘");
+        break;
+    case STOCK_SESSION_STANDBY:
+    default:
+        snprintf(buffer, size, "休市待机 %s",
+                 dashboard->next_open_time[0] ? dashboard->next_open_time : "");
+        break;
+    }
+}
+
+bool stock_dashboard_apply_failure(stock_dashboard_t *dashboard,
+                                   int64_t now_ms,
+                                   int64_t service_started_ms,
+                                   int64_t stale_after_ms)
+{
+    if (dashboard == NULL || stale_after_ms < 0) {
+        return false;
+    }
+    const int64_t reference = dashboard->last_success_update_ms > 0
+                                  ? dashboard->last_success_update_ms
+                                  : service_started_ms;
+    if (now_ms - reference <= stale_after_ms ||
+        dashboard->data_state == STOCK_DATA_STALE) {
+        return false;
+    }
+    dashboard->data_state = STOCK_DATA_STALE;
+    return true;
 }
 
 void stock_format_price(char *buffer, size_t size, stock_price_t price)

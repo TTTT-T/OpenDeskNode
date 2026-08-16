@@ -1,4 +1,4 @@
-# Stock component font subsets (Phase 1C)
+# Stock component font subsets
 
 Generated once with `lv_font_conv` 1.5.3 (npx-pinned) from the Source Han Sans
 SC Normal OTF that ships inside the LVGL managed component. Source Han Sans is
@@ -15,7 +15,7 @@ Regenerate from the repository root (requires node/npx):
 
     npx --yes lv_font_conv@1.5.3 --no-compress --bpp 1 --size 24 \
       --font firmware/product/managed_components/lvgl__lvgl/scripts/built_in_font/SourceHanSansSC-Normal.otf \
-      -r 0x20-0x7E --symbols "▲▼中国平安贵州茅台宁德时代比亚迪涨跌停牌" \
+      -r 0x20-0x7E,0x4E00-0x9FEF --symbols "▲▼" \
       --format lvgl --lv-font-name stock_font_cjk_24 \
       -o firmware/product/components/stock/fonts/stock_font_cjk_24.c
 
@@ -29,11 +29,11 @@ Notes:
 
 - 1 bpp, no compression, no kerning store: crisp thresholded rendering on the
   monochrome ST7305 and small flash cost.
-- `stock_font_cjk_24.c`: ASCII 0x20-0x7E, U+25B2 ▲, U+25BC ▼, and exactly the
-  CJK glyphs needed by the four deterministic mock names (贵州茅台, 宁德时代,
-  比亚迪, 中国平安) plus 涨停/跌停/停牌 status text.
+- `stock_font_cjk_24.c`: ASCII 0x20-0x7E, the complete CJK Unified Ideographs
+  range U+4E00-0x9FEF available in the pinned Source Han Sans SC font,
+  U+25B2 ▲, and U+25BC ▼. This supports Web-managed
+  A-share short names without maintaining a firmware name whitelist; common
+  `ST`, `*ST`, `N`, `C`, `-U`, and `-W` markers are covered by ASCII.
 - `stock_font_num_48.c`: digits, `+ - . %` for the large price line.
-- The mock name/status strings are constrained by
-  `scripts/verify-phase-1c.sh` to glyphs this font actually contains, so a
-  runtime change of mock text without regenerating the font fails statically
-  instead of rendering tofu.
+- The Phase 1E verifier asserts every code point in the basic CJK block plus
+  both arrows. Characters outside that declared range remain unsupported.

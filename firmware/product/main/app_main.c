@@ -1,13 +1,11 @@
 /*
- * Phase 1C product bootstrap coordinator.
+ * Phase 1E product bootstrap coordinator.
  *
  * Orchestrates the accepted Phase 1B.1 hardware bootstrap (flash/PSRAM
  * report, RLCD/LVGL, BOOT button, Wi-Fi station) and the Phase 1C stock
- * display skeleton: a deterministic mock drives the stock model into the
- * dashboard view on the RLCD, refreshed about every 10 seconds with one
- * metrics log line per cycle. No cloud, voice, real market API, OTA, or
- * application-protocol responsibilities. The stock display does not depend
- * on the network connection.
+ * live dashboard: the stock task reads the self-hosted LAN Gateway about every
+ * 10 seconds and preserves its last valid snapshot across bounded failures.
+ * No provider credential, cloud voice, OTA, or public endpoint is present.
  */
 #include <stdbool.h>
 #include <stddef.h>
@@ -69,10 +67,8 @@ void app_main(void)
     ESP_ERROR_CHECK(display_init());
     display_set_psram_status(psram_ok ? "OK" : "Mismatch");
 
-    /* Stock display skeleton: mock -> model -> view -> LVGL -> RLCD. The
-     * stock service task (explicit stack budget) creates the view, resets
-     * the mock, and renders the first update before its ~10 second cycle;
-     * the main task never touches LVGL stock widgets. */
+    /* The task owns its placeholder, HTTP/JSON conversion, last-good model,
+     * and all LVGL stock updates; app_main never touches stock widgets. */
     ESP_ERROR_CHECK(stock_service_start());
 
     ESP_ERROR_CHECK(board_button_init(on_boot_button_pressed));

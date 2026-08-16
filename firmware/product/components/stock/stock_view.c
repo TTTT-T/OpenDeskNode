@@ -1,5 +1,5 @@
 /*
- * Stock dashboard view (Phase 1C): four equal 200x150 panels on the
+ * Stock dashboard view: four 200x138 panels plus a 24 px global status strip
  * 400x300 monochrome RLCD, rendered through LVGL on top of the display
  * component transport. All glyphs come from the subset fonts generated from
  * Source Han Sans SC (see fonts/README.md); the view never renders a glyph
@@ -15,9 +15,10 @@
 #include "lvgl.h"
 
 #define STOCK_VIEW_PANEL_WIDTH 200
-#define STOCK_VIEW_PANEL_HEIGHT 150
+#define STOCK_VIEW_PANEL_HEIGHT 138
+#define STOCK_VIEW_STATUS_HEIGHT 24
 #define STOCK_VIEW_CHART_WIDTH 190
-#define STOCK_VIEW_CHART_HEIGHT 40
+#define STOCK_VIEW_CHART_HEIGHT 28
 
 extern const lv_font_t stock_font_cjk_24;
 extern const lv_font_t stock_font_num_48;
@@ -35,12 +36,16 @@ typedef struct {
 } stock_panel_view_t;
 
 static lv_obj_t *s_screen;
+static lv_obj_t *s_banner;
 static stock_panel_view_t s_panels[STOCK_COUNT];
 
 static lv_obj_t *create_panel(uint16_t column, uint16_t row)
 {
     lv_obj_t *panel = lv_obj_create(s_screen);
-    lv_obj_set_pos(panel, column * STOCK_VIEW_PANEL_WIDTH, row * STOCK_VIEW_PANEL_HEIGHT);
+    const int32_t y = row == 0
+                          ? 0
+                          : STOCK_VIEW_PANEL_HEIGHT + STOCK_VIEW_STATUS_HEIGHT;
+    lv_obj_set_pos(panel, column * STOCK_VIEW_PANEL_WIDTH, y);
     lv_obj_set_size(panel, STOCK_VIEW_PANEL_WIDTH, STOCK_VIEW_PANEL_HEIGHT);
     lv_obj_set_style_bg_color(panel, lv_color_white(), 0);
     lv_obj_set_style_bg_opa(panel, LV_OPA_COVER, 0);
@@ -121,6 +126,12 @@ esp_err_t stock_view_create(void)
         create_panel_content(&s_panels[i], (uint16_t)(i % 2), (uint16_t)(i / 2));
     }
 
+    s_banner = create_text(s_screen, &stock_font_cjk_24, 0,
+                           STOCK_VIEW_PANEL_HEIGHT, 400, LV_TEXT_ALIGN_CENTER);
+    lv_obj_set_height(s_banner, STOCK_VIEW_STATUS_HEIGHT);
+    lv_obj_set_style_bg_color(s_banner, lv_color_white(), 0);
+    lv_obj_set_style_bg_opa(s_banner, LV_OPA_COVER, 0);
+
     lv_screen_load(s_screen);
     display_unlock();
     return ESP_OK;
@@ -190,6 +201,16 @@ void stock_view_update(const stock_dashboard_t *dashboard)
         char amount[16];
         char percent[32];
 
+        if (!dashboard->has_data) {
+            lv_label_set_text(view->name_label, "");
+            lv_label_set_text(view->status_label, "");
+            lv_label_set_text(view->price_label, "--");
+            lv_label_set_text(view->change_label, "");
+            lv_obj_add_flag(view->sparkline, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(view->baseline, LV_OBJ_FLAG_HIDDEN);
+            continue;
+        }
+
         lv_label_set_text(view->name_label, quote->name);
 
         /* Change amount is always visible; special states never replace it. */
@@ -206,6 +227,10 @@ void stock_view_update(const stock_dashboard_t *dashboard)
 
         update_chart(view, quote);
     }
+
+    char banner[48];
+    stock_format_dashboard_banner(banner, sizeof(banner), dashboard);
+    lv_label_set_text(s_banner, banner);
 
     /* Render synchronously so the caller's flush metrics cover exactly this
      * update and cannot leak into the next reporting interval. */

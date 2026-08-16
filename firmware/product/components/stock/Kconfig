@@ -1,0 +1,18 @@
+menu "Stock Gateway client"
+
+config STOCK_GATEWAY_BASE_URL
+    string "LAN Stock Gateway base URL"
+    default "http://192.168.31.209:8000"
+    help
+        LAN-only HTTP endpoint. Do not put credentials or query secrets here.
+
+config STOCK_GATEWAY_DEVICE_ID
+    string "Stock Gateway device id"
+    default "device-a"
+
+config STOCK_GATEWAY_TIMEOUT_MS
+    int "Dashboard request timeout (milliseconds)"
+    range 1000 30000
+    default 8000
+
+endmenu

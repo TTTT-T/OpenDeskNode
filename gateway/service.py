@@ -55,6 +55,27 @@ def _age_seconds(value: Optional[str], now: datetime) -> Optional[float]:
     return max(0.0, (now.astimezone(SHANGHAI_TZ) - parsed).total_seconds())
 
 
+def downsample_sequence(values: Sequence[Any], limit: Optional[int]) -> List[Any]:
+    """Return an endpoint-preserving, evenly spaced bounded projection.
+
+    The default dashboard remains byte-for-byte compatible when ``limit`` is
+    ``None``.  Firmware callers request 32 samples so the MCU never has to
+    allocate and parse the duplicated full-session minute arrays.
+    """
+
+    items = list(values)
+    if limit is None or len(items) <= limit:
+        return items
+    if limit < 2:
+        raise ValueError("intraday sample limit must be at least 2")
+    denominator = limit - 1
+    last = len(items) - 1
+    return [
+        items[(index * last + denominator // 2) // denominator]
+        for index in range(limit)
+    ]
+
+
 def canonicalize_quote(quote: Quote) -> Tuple[Optional[str], Optional[float], Optional[float]]:
     """Return a real source timestamp and recomputed change values.
 
@@ -436,6 +457,7 @@ class StockGatewayService:
         device_id: str,
         now: Optional[datetime] = None,
         touch_access: bool = False,
+        intraday_samples: Optional[int] = None,
     ) -> Dict[str, Any]:
         device = self.repository.get_device(device_id)
         if device is None:
@@ -456,6 +478,9 @@ class StockGatewayService:
                 snapshot.name = slot.name
             freshness = self._freshness(snapshot, current)
             quote = snapshot.to_api_dict(freshness)
+            quote["intraday"] = downsample_sequence(
+                quote["intraday"], intraday_samples
+            )
             quote["slot"] = slot.slot
             quotes.append(quote)
             intraday.append(
@@ -463,7 +488,10 @@ class StockGatewayService:
                     "symbol": slot.symbol,
                     "session_date": snapshot.intraday_session_date,
                     "data_timestamp": snapshot.intraday_data_timestamp,
-                    "bars": [bar.to_dict() for bar in snapshot.intraday],
+                    "bars": downsample_sequence(
+                        [bar.to_dict() for bar in snapshot.intraday],
+                        intraday_samples,
+                    ),
                 }
             )
             freshness_items.append(
@@ -483,7 +511,15 @@ class StockGatewayService:
         overall_status = "STALE" if overall_stale else "FRESH"
         if overall_stale and not overall_last_success:
             overall_status = "ERROR" if any(item.get("last_error") for item in freshness_items) else "STALE"
-        return {
+        next_open_in_seconds = max(
+            0,
+            int(
+                (
+                    datetime.fromisoformat(session.next_open_at) - current
+                ).total_seconds()
+            ),
+        )
+        dashboard = {
             "schema_version": 1,
             "device": device.to_dict() if device is not None else None,
             "watchlist": [slot.to_dict() for slot in slots],
@@ -503,6 +539,9 @@ class StockGatewayService:
             },
             "stale": overall_stale,
         }
+        if intraday_samples is not None:
+            dashboard["next_open_in_seconds"] = next_open_in_seconds
+        return dashboard
 
     def status(self, device_id: Optional[str] = None) -> Dict[str, Any]:
         devices = self.repository.list_devices()

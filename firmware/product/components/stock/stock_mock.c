@@ -116,6 +116,8 @@ static void apply_tick(uint16_t tick)
         }
     }
     s_dashboard.session = STOCK_SESSION_OPEN;
+    s_dashboard.has_data = true;
+    s_dashboard.data_state = STOCK_DATA_FRESH;
     s_dashboard.last_success_update_ms += STOCK_MOCK_TICK_INTERVAL_MS;
 }
 

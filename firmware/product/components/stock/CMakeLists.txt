@@ -2,12 +2,14 @@ idf_component_register(
     SRCS
         "stock_model.c"
         "stock_mock.c"
+        "stock_gateway_parser.c"
+        "stock_gateway_client.c"
         "stock_view.c"
         "stock_service.c"
         "fonts/stock_font_cjk_24.c"
         "fonts/stock_font_num_48.c"
     INCLUDE_DIRS "include"
-    REQUIRES display lvgl freertos esp_timer heap
+    REQUIRES display lvgl freertos esp_timer heap esp_http_client network
 )
 
 # The lv_font_conv-generated font files include "lvgl.h" only when

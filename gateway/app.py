@@ -236,9 +236,16 @@ def create_app(
         }
 
     @app.get("/api/v1/dashboard/{device_id}")
-    def dashboard(device_id: str) -> Any:
+    def dashboard(
+        device_id: str,
+        intraday_samples: Optional[int] = Query(None, ge=2, le=64),
+    ) -> Any:
         try:
-            return runtime_service.dashboard(device_id, touch_access=True)
+            return runtime_service.dashboard(
+                device_id,
+                touch_access=True,
+                intraday_samples=intraday_samples,
+            )
         except KeyError:
             raise _not_found(device_id)
         except ValueError as exc:

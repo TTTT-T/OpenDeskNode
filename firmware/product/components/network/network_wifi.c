@@ -26,6 +26,12 @@ static network_status_callback_t s_status_callback;
 static bool s_has_station_credentials;
 static bool s_smartconfig_running;
 static uint8_t s_connect_retries;
+static volatile bool s_connected;
+
+bool network_is_connected(void)
+{
+    return s_connected;
+}
 
 static void report_status(network_status_t status)
 {
@@ -93,6 +99,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
     (void)event_data;
 
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+        s_connected = false;
         if (s_has_station_credentials) {
             s_connect_retries = 0;
             report_status(NETWORK_STATUS_CONNECTING);
@@ -105,6 +112,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
     }
 
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        s_connected = false;
         if (s_has_station_credentials && s_connect_retries < MAX_CONNECT_RETRIES) {
             ++s_connect_retries;
             ESP_LOGW(TAG, "Wi-Fi disconnected; retry %u of %u", s_connect_retries,
@@ -120,6 +128,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
 
     if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         s_connect_retries = 0;
+        s_connected = true;
         /* Deliberately do not log the assigned address or station identity. */
         ESP_LOGI(TAG, "Wi-Fi station connected");
         report_status(NETWORK_STATUS_CONNECTED);

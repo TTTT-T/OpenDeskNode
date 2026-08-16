@@ -140,10 +140,56 @@ static void test_format_change_percent_with_state(void)
 
 static void test_state_text(void)
 {
+    CHECK_STR(stock_market_state_text(STOCK_MARKET_UNKNOWN), "");
     CHECK_STR(stock_market_state_text(STOCK_MARKET_NORMAL), "");
     CHECK_STR(stock_market_state_text(STOCK_MARKET_LIMIT_UP), "\xe6\xb6\xa8\xe5\x81\x9c");
     CHECK_STR(stock_market_state_text(STOCK_MARKET_LIMIT_DOWN), "\xe8\xb7\x8c\xe5\x81\x9c");
     CHECK_STR(stock_market_state_text(STOCK_MARKET_SUSPENDED), "\xe5\x81\x9c\xe7\x89\x8c");
+}
+
+static void test_dashboard_banner(void)
+{
+    char buffer[48];
+    stock_dashboard_t dashboard = {0};
+
+    dashboard.data_state = STOCK_DATA_STARTING;
+    stock_format_dashboard_banner(buffer, sizeof(buffer), &dashboard);
+    CHECK_STR(buffer, "连接中");
+
+    dashboard.has_data = true;
+    dashboard.data_state = STOCK_DATA_FRESH;
+    dashboard.session = STOCK_SESSION_OPEN;
+    stock_format_dashboard_banner(buffer, sizeof(buffer), &dashboard);
+    CHECK_STR(buffer, "交易中");
+
+    dashboard.session = STOCK_SESSION_LUNCH_BREAK;
+    dashboard.next_open_minutes = 42;
+    stock_format_dashboard_banner(buffer, sizeof(buffer), &dashboard);
+    CHECK_STR(buffer, "午间休市 42m");
+
+    dashboard.data_state = STOCK_DATA_STALE;
+    memcpy(dashboard.last_success_time, "12:34", 6);
+    stock_format_dashboard_banner(buffer, sizeof(buffer), &dashboard);
+    CHECK_STR(buffer, "行情异常 12:34");
+}
+
+static void test_failure_grace_keeps_last_good_data(void)
+{
+    stock_dashboard_t dashboard = {0};
+    dashboard.has_data = true;
+    dashboard.data_state = STOCK_DATA_FRESH;
+    dashboard.last_success_update_ms = 1000;
+    dashboard.quotes[0].current = 12345;
+
+    CHECK_TRUE(!stock_dashboard_apply_failure(&dashboard, 300999, 0, 300000));
+    CHECK_TRUE(dashboard.data_state == STOCK_DATA_FRESH);
+    CHECK_TRUE(dashboard.quotes[0].current == 12345);
+
+    CHECK_TRUE(!stock_dashboard_apply_failure(&dashboard, 301000, 0, 300000));
+    CHECK_TRUE(stock_dashboard_apply_failure(&dashboard, 301001, 0, 300000));
+    CHECK_TRUE(dashboard.data_state == STOCK_DATA_STALE);
+    CHECK_TRUE(dashboard.quotes[0].current == 12345);
+    CHECK_TRUE(!stock_dashboard_apply_failure(&dashboard, 401000, 0, 300000));
 }
 
 static bool quote_changes_sign_during_cycle(size_t index, int *direction)
@@ -279,6 +325,8 @@ int main(void)
     test_format_change_percent_exact_semantics();
     test_format_change_percent_with_state();
     test_state_text();
+    test_dashboard_banner();
+    test_failure_grace_keeps_last_good_data();
     test_scenario_coverage();
     test_session_and_last_success_update();
 
