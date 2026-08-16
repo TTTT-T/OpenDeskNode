@@ -1,6 +1,6 @@
 # Phase 1 Hardware Baseline
 
-状态：Phase 1A 和 Phase 1B 已完成；Phase 1C 尚未启动。本文是验收记录模板；未填写证据的条目一律视为未通过。
+状态：Phase 1A 和 Phase 1B 已完成；Phase 1C 已完成并验收。本文是验收记录模板；未填写证据的条目一律视为未通过。
 
 ## 当前接入观察
 
