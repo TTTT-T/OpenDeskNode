@@ -135,7 +135,7 @@ easyquotation/Tencent 和 Baidu direct 做真实、低频、短连续调用，�
 
 ## 最近完成
 
-- [Phase 2A — Voice Hardware Bring-up](PHASE2A_REPORT.md)（2026-08-17，待用户验收）
+- [Phase 2A — Voice Hardware Bring-up](PHASE2A_REPORT.md)（2026-08-17，commit `556acc3`，待用户验收）
 - [Phase 1E — Live Stock Dashboard](phase-reports/phase-01e-live-stock-dashboard.md)（2026-08-16）
 - [Phase 1D — Stock Gateway](phase-reports/phase-01d-stock-gateway.md)（2026-08-16）
 - [Phase 1D.0 — A-share Provider Bake-off](phase-reports/phase-01d0-provider-bakeoff.md)（2026-08-15）
