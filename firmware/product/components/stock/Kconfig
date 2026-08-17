@@ -1,0 +1,19 @@
+menu "OpenDeskNode"
+
+config STOCK_GATEWAY_BASE_URL
+    string "LAN Stock Gateway base URL"
+    default "http://stock-gateway.local:8000"
+    help
+        LAN-only HTTP endpoint reachable by this node. Change it to your
+        Gateway host name or LAN IP. Do not put credentials or secrets here.
+
+config STOCK_GATEWAY_DEVICE_ID
+    string "Stock Gateway device id"
+    default "device-a"
+
+config STOCK_GATEWAY_TIMEOUT_MS
+    int "Dashboard request timeout (milliseconds)"
+    range 1000 30000
+    default 8000
+
+endmenu

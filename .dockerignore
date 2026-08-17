@@ -1,0 +1,15 @@
+.git
+.gitignore
+.env
+.venv
+.tools
+data
+tests
+docs/archive
+docs/phase-reports/*-results.json
+scripts/phase-01d0-provider-bakeoff.py
+scripts/verify-phase-1d0.sh
+firmware
+*.pyc
+__pycache__
+.DS_Store
