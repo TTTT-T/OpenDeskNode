@@ -1,18 +1,10 @@
 # OpenDeskNode
 
-**Version:** v0.1.0<br>
-**Release:** Stock Dashboard
+**OpenDeskNode is an open-source platform for building compact, always-on smart displays with real-time data, voice, and AI.**
 
-OpenDeskNode is an open platform for compact, always-on desk nodes: glanceable
-dashboards today, with room for additional local peripherals and services over
-time. This first public release delivers a self-hosted A-share stock dashboard
-with a low-power monochrome display client and a LAN Stock Gateway.
+**v0.1.0 — Stock Dashboard** turns the Waveshare ESP32-S3-RLCD-4.2 into a self-hosted real-time A-share stock dashboard with a low-power monochrome display client and a LAN Stock Gateway.
 
-The first reference hardware is the
-[Waveshare ESP32-S3-RLCD-4.2](https://www.waveshare.com/wiki/ESP32-S3-RLCD-4.2).
-It is a validated implementation target, not a permanent platform restriction;
-the Gateway and application boundaries are designed so that other display and
-compute targets can be added later.
+The Waveshare ESP32-S3-RLCD-4.2 is the first validated reference hardware, not a permanent platform restriction. OpenDeskNode is designed so that additional display boards, MCUs, edge-computing devices, local peripherals, and services can be added over time.
 
 ## What v0.1.0 includes
 
