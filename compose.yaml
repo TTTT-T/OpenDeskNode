@@ -1,0 +1,29 @@
+services:
+  stock-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${STOCK_GATEWAY_PORT:-8000}:8000"
+    environment:
+      STOCK_GATEWAY_DB_PATH: /data/stock-gateway.sqlite3
+      STOCK_GATEWAY_LOG_PATH: /data/logs/stock-gateway.log
+      STOCK_GATEWAY_PUBLIC_HOSTNAME: ${STOCK_GATEWAY_PUBLIC_HOSTNAME:-stock-gateway.local}
+      STOCK_GATEWAY_QUOTE_TTL_SECONDS: ${STOCK_GATEWAY_QUOTE_TTL_SECONDS:-5}
+      STOCK_GATEWAY_INTRADAY_TTL_SECONDS: ${STOCK_GATEWAY_INTRADAY_TTL_SECONDS:-30}
+      STOCK_GATEWAY_OFF_MARKET_REFRESH_SECONDS: ${STOCK_GATEWAY_OFF_MARKET_REFRESH_SECONDS:-300}
+      STOCK_GATEWAY_STALE_SECONDS: ${STOCK_GATEWAY_STALE_SECONDS:-300}
+      STOCK_GATEWAY_PROVIDER_TIMEOUT_SECONDS: ${STOCK_GATEWAY_PROVIDER_TIMEOUT_SECONDS:-10}
+      STOCK_GATEWAY_PROVIDER_RETRIES: ${STOCK_GATEWAY_PROVIDER_RETRIES:-1}
+      STOCK_GATEWAY_PROVIDER_BACKOFF_SECONDS: ${STOCK_GATEWAY_PROVIDER_BACKOFF_SECONDS:-0.25}
+    volumes:
+      - "${STOCK_GATEWAY_DATA_DIR:-stock_gateway_data}:/data"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  stock_gateway_data:

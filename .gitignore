@@ -1,0 +1,38 @@
+# Local toolchains and generated build output
+.tools/
+build/
+dist/
+*.bin
+*.elf
+*.map
+firmware/xiaozhi/build/
+firmware/xiaozhi/managed_components/
+firmware/xiaozhi/sdkconfig
+firmware/xiaozhi/sdkconfig.old
+firmware/product/build/
+firmware/product/managed_components/
+firmware/product/sdkconfig
+firmware/product/sdkconfig.old
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+data/.config.yaml
+data/stock-gateway.sqlite3*
+data/stock-gateway/
+*.sqlite
+*.sqlite3
+*.db
+*.log
+logs/
+
+# macOS and editor state
+.DS_Store
+.vscode/settings.json
+.idea/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
