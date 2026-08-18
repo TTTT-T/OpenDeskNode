@@ -63,16 +63,24 @@ R0 webrtc 路径不是 ESP32 产品路径，直接转 R2（gateway-relay）。R0
 （未定论），不静默跳过；若 R2 出现模型类错误，候选隔离步骤为临时换
 `gpt-realtime-2.1` 复测（待用户批准，不属于本阶段范围变更）。
 
-## 4. R1 — Agent Consult：PENDING
+## 4. R1 — Agent Consult：部分 PASS（2026-08-18 20:42–20:43）
+
+session `30d93db0-da54-49f5-952d-2328c1da2f97`（gateway-relay / agent-consult）。
 
 | 项 | 结果 | 备注 |
 | --- | --- | --- |
-| `openclaw_agent_consult` 触发证据（Gateway 日志） | PENDING | |
-| durable memory 跨渠道一致（语音 ↔ 文本） | PENDING | 暗号测试 |
-| tool 调用成功（≥1 次） | PENDING | 实际 tool：PENDING |
-| 回答体现 EVA 人格/记忆 | PENDING | |
+| consult 调用真实 EVA agent | **PASS** | 日志 `lane=session:agent:eva:main`；`runId=talk-call_TXlwVWfxNt6TpTTy-…` |
+| durable memory 写入 | **PASS** | `workspace-eva/MEMORY.md` 20:43:02 写入「备用2号 = 蓝鲸7号」 |
+| 跨渠道读回（Telegram 问暗号） | 待用户执行 | 写已证实；读回是剩余人工项 |
+| tool 调用 | **PASS** | 多次 `tool.call`→`tool.result`；`exec.approval.waitDecision` + `resolve`；Telegram 出站 7612/7613 |
+| EVA 主模型 | 降级成功 | `zai/glm-5.2` 返回 `401 令牌已过期`；failover 到 `deepseek-v4-flash` 后 `candidate_succeeded` |
+| 浏览器声学 | **已知缺陷** | 扬声器回灌麦克风 → 自打断循环（20:43:15–20:43:46 密集 transcript/output 循环）；浏览器路径无硬件 AEC |
 
-错误与日志摘要：PENDING
+### 诊断记录
+
+- agent-consult 链路成立：语音 → OpenAI Realtime → consult EVA agent → 工具/记忆。
+- EVA 主模型 zai token 过期是独立运维问题，不否定 consult 架构；本次靠 fallback 完成。
+- 自打断是**浏览器外放测试环境**的声学问题，不是协议失败。产品路径依赖 Phase 2A 已验收的 ESP32 硬件 AEC，此缺陷反向证明设备侧 AEC 的必要性。
 
 ## 5. R2 — Gateway Relay：核心验证 PASS（2026-08-18 20:26，gpt-realtime-2.1）
 
