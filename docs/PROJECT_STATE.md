@@ -1,19 +1,45 @@
 # 项目当前状态
 
-最后更新：2026-08-16
+最后更新：2026-08-18
 
 本文件是当前阶段与状态的唯一入口。新会话从这里定位当前 Phase 与最近相关报告，再按需读取指向的 canonical 文档；不为背景加载全部阶段报告或 `docs/archive/`。
 
 ## 当前 Phase
 
-**[Phase 2A — Voice Hardware Bring-up](PHASE2A_VOICE_HARDWARE_BRINGUP.md)** —
-已完成，等待用户验收（报告：[PHASE2A_REPORT.md](PHASE2A_REPORT.md)）。
-14 项可执行验收全部 PASS：ES7210/ES8311+I2S 全双工打通；双麦独立性
-（位相同率 2.5%、最小窗残差 0.0195）与 AEC 参考有效性（活动对比
-23.4 dB、声学延迟 15 样本）有 WAV 级证据；设备端 esp-sr AEC ERLE
-32.5 dB；BOOT 单按/双击实测通过；63 分钟稳定期资源平稳（internal
-起止差 12 B，PSRAM 持平），股票看板 405/405 轮询 `ESP_OK`。
-未进入 Phase 2B；等待用户验收后归档。
+**[Phase 2B — OpenClaw GPT-Live Realtime Architecture Validation]
+(PHASE2B_GPT_LIVE_REALTIME_VALIDATION.md)** — 进行中（R0/R1/R2 待执行；
+结果回填 [PHASE2B_REALTIME_VALIDATION_REPORT.md](PHASE2B_REALTIME_VALIDATION_REPORT.md)
+（DRAFT））。
+
+2026-08-18 用户冻结新的语音架构方向并暂停旧路线：
+
+- 新主链：ESP32（音频边缘：双麦/AEC/VAD/本地唤醒“你好 EVA”/ES8311/PCM）→
+  Mac mini **EVA Voice Bridge**（薄桥）→ NAS **OpenClaw Gateway** →
+  **GPT-Live `gpt-live-1-codex`**（实时听说/VAD/连续对话/打断）→
+  `openclaw_agent_consult` → **OpenClaw EVA Agent**（memory/tools/HA/日历/自动化）。
+- ESP32 不承担 STT/TTS/LLM/Agent；一切基于 “STT → OpenClaw → TTS” 的旧开发
+  停止。R0–R2 全部 PASS 前禁止：自建 streaming STT/TTS、Whisper 主链、旧
+  Voice Gateway、ESP32 直连 OpenAI、ESP32 承担 OpenClaw 协议、为未验证架构
+  大规模重构、ESP32 集成开发（禁止清单见阶段定义）。
+- **Phase 2A 已由用户验收**（2026-08-18 确认），其硬件基线重新作为开发起点，
+  不得破坏：双麦采集（ES7210）、ES8311、16 kHz/16-bit PCM、AEC、录音/播放
+  测试、稳定性基线（证据：[PHASE2A_REPORT.md](PHASE2A_REPORT.md)）。
+- R0–R2 为用户人工执行项（Mac 浏览器 + ChatGPT OAuth + 真人中文语音）；
+  Agent 负责记录模板、结果分析与报告定稿。
+- ADR-0006 中 “Mac 本地 ASR/LLM/TTS Compute Node” 路线自 2026-08-18 起停止
+  驱动开发；正式 ADR 变更待 R0–R2 结论后随下一阶段架构决策创建。
+
+### 分支拓扑（2026-08-18 起）
+
+- **`phase-2b-realtime`（本分支，基线 `6982053`）**：自 Phase 2A 验收态切出，
+  新的语音开发主线。固件为纯 2A 状态（无 voice 组件）。
+- **`dev`（`45bc6f8`）**：保留旧 Phase 2B（VOICE_PROTOCOL v1 + Mock Gateway，
+  软件完成）与文档重组；实验资产，不删除、不合并。
+- **`phase-2b-r`（`9cd984b`）**：保留 ADR-0007 Voice Edge 重构与协议 v2
+  （软件完成即被 realtime 方向取代）；实验资产，不删除、不合并（其
+  conversation/turn 语义可在 Bridge 设备侧协议设计时参考）。
+- 历史阶段状态不变：Phase 1E/1D/1D.0/1C/1B.1 已完成并验收，股票链路不受
+  语音方向调整影响。
 
 ### Phase 1E（已完成并验收，2026-08-16）
 
@@ -135,7 +161,7 @@ easyquotation/Tencent 和 Baidu direct 做真实、低频、短连续调用，�
 
 ## 最近完成
 
-- [Phase 2A — Voice Hardware Bring-up](PHASE2A_REPORT.md)（2026-08-17，commit `556acc3`，待用户验收）
+- [Phase 2A — Voice Hardware Bring-up](PHASE2A_REPORT.md)（2026-08-17 交付 `556acc3`；2026-08-18 用户确认验收，作为 realtime 方向开发基线）
 - [Phase 1E — Live Stock Dashboard](phase-reports/phase-01e-live-stock-dashboard.md)（2026-08-16）
 - [Phase 1D — Stock Gateway](phase-reports/phase-01d-stock-gateway.md)（2026-08-16）
 - [Phase 1D.0 — A-share Provider Bake-off](phase-reports/phase-01d0-provider-bakeoff.md)（2026-08-15）
@@ -148,13 +174,22 @@ easyquotation/Tencent 和 Baidu direct 做真实、低频、短连续调用，�
 
 ## 下一步
 
-Phase 2A 已完成待用户验收；验收通过后停在 2A 边界，不自行进入
-Phase 2B。2B 前置检查：AEC 模式/NLP 档位对比选型、24 kHz 需求评估
-（esp-sr AEC 限 16 kHz）。下一交易时段补测 Gateway quote/分钟实时
-推进仍保留。
+1. 用户执行 R0（浏览器 ChatGPT OAuth + `gpt-live-1-codex` + webrtc 中文实时
+   语音/延迟/barge-in）→ 回填报告。
+2. R1（agent consult / memory 跨渠道 / tool 调用）→ R2（transport 改
+   `gateway-relay` 复验，重点 OAuth-only 会话建立）。
+3. 三项全 PASS：报告定稿 + 新 ADR（处理 ADR-0006 AI 路线替代）+ ESP32 →
+   Mac Voice Bridge 接口设计开题。任一 FAIL：记录证据，回到架构决策，
+   不绕过、不扩大范围。
+4. 旧遗留补测项保留：下一交易时段 Gateway quote/分钟实时推进；2A 遗留
+   WAV 协议限速、AEC 模式对比等（见 PHASE2A_REPORT 已知问题节）。
 
 ## 重要风险与未验证
 
+- Realtime 主链（2026-08-18 方向）全部未验证：ChatGPT OAuth-only 能否驱动
+  GPT-Live（尤其 `gateway-relay`）是 R2 核心问题；无 key 限流未知；headless
+  Bridge 的 OAuth 会话维持未验证；GPT-Live 下行音频对 ESP32 16 kHz 链路的
+  适配未验证。见阶段定义"风险"节。
 - 2A 遗留：串口 WAV 协议在 >16 kHz/更多通道时需重新限速评估；AEC 仅验
   证 VOIP_HIGH_PERF 模式；音量 0 对照实验 inconclusive（底噪主导，不用
   作证据）。详见 [PHASE2A_REPORT.md](PHASE2A_REPORT.md) 已知问题节。
