@@ -27,7 +27,7 @@
 
 ### 预计模块
 
-`docs/VOICE_BRIDGE_PROTOCOL.md`；`bridge/` 薄服务（C0 host fixture 已通）；
+`docs/VOICE_BRIDGE_PROTOCOL.md`；`bridge/` 薄服务。C0 host + live Talk 已通。
 C1 起才增量改 `firmware/product` voice transport。不得破坏 Phase 2A
 `components/audio/`。
 

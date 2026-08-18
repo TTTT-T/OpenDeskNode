@@ -147,6 +147,16 @@ class GatewayTalkClient:
         self._pending: dict[str, asyncio.Future] = {}
         self._reader: Optional[asyncio.Task] = None
         self._connected = False
+        self.stats = {
+            "events": 0,
+            "event_names": [],
+            "payload_types": [],
+            "talk_event_types": [],
+            "append_ok": 0,
+            "append_fail": 0,
+        }
+        self._ready_sessions: set[str] = set()
+        self._ready_waiters: dict[str, asyncio.Event] = {}
 
     @property
     def connected(self) -> bool:
@@ -196,9 +206,33 @@ class GatewayTalkClient:
             if hello.get("type") == "res" and hello.get("id") == req_id:
                 break
         if not hello.get("ok"):
-            raise RuntimeError("Talk connect failed")
+            error = hello.get("error") or {}
+            raise RuntimeError(
+                "Talk connect failed: %s" % (error.get("message") or error.get("code") or "unknown")
+            )
         self._connected = True
         self._reader = asyncio.create_task(self._read_loop())
+
+    def _mark_ready(self, session_id: str) -> None:
+        if session_id:
+            self._ready_sessions.add(session_id)
+            waiter = self._ready_waiters.get(session_id)
+            if waiter is not None:
+                waiter.set()
+            return
+        for waiter in self._ready_waiters.values():
+            waiter.set()
+
+    async def _wait_ready(self, session_id: str, timeout: float) -> None:
+        if session_id in self._ready_sessions:
+            return
+        waiter = self._ready_waiters.setdefault(session_id, asyncio.Event())
+        try:
+            await asyncio.wait_for(waiter.wait(), timeout=timeout)
+        except asyncio.TimeoutError:
+            LOGGER.warning("Talk session ready timed out")
+        finally:
+            self._ready_waiters.pop(session_id, None)
 
     async def close(self) -> None:
         self._connected = False
@@ -217,8 +251,15 @@ class GatewayTalkClient:
             },
         )
         if not response.get("ok"):
-            raise RuntimeError("talk.session.create failed")
+            error = response.get("error") or {}
+            raise RuntimeError(
+                "talk.session.create failed: %s"
+                % (error.get("message") or error.get("code") or "unknown")
+            )
         payload = response.get("payload") or {}
+        session_id = payload.get("sessionId")
+        if isinstance(session_id, str) and session_id:
+            await self._wait_ready(session_id, timeout=12)
         return payload
 
     async def append_audio(
@@ -234,7 +275,13 @@ class GatewayTalkClient:
             params["timestamp"] = timestamp
         response = await self._request("talk.session.appendAudio", params)
         if not response.get("ok"):
-            raise RuntimeError("talk.session.appendAudio failed")
+            self.stats["append_fail"] += 1
+            error = response.get("error") or {}
+            raise RuntimeError(
+                "talk.session.appendAudio failed: %s"
+                % (error.get("message") or error.get("code") or "unknown")
+            )
+        self.stats["append_ok"] += 1
 
     async def cancel_output(self, session_id: str, reason: str = "barge-in") -> None:
         response = await self._request(
@@ -269,9 +316,32 @@ class GatewayTalkClient:
                     if future is not None and not future.done():
                         future.set_result(message)
                     continue
-                if kind == "event" and message.get("event") == "talk.event":
+                if kind == "event":
+                    name = str(message.get("event") or "")
+                    self.stats["events"] += 1
+                    if name and name not in self.stats["event_names"]:
+                        self.stats["event_names"].append(name)
                     payload = message.get("payload") or {}
-                    if self._listener is not None:
+                    payload_type = payload.get("type") if isinstance(payload, dict) else None
+                    if payload_type and payload_type not in self.stats["payload_types"]:
+                        self.stats["payload_types"].append(payload_type)
+                    talk_type = None
+                    if isinstance(payload, dict):
+                        talk_event = payload.get("talkEvent") or {}
+                        if isinstance(talk_event, dict):
+                            talk_type = talk_event.get("type")
+                    if talk_type and talk_type not in self.stats["talk_event_types"]:
+                        self.stats["talk_event_types"].append(talk_type)
+                    session_id = ""
+                    if isinstance(payload, dict):
+                        session_id = str(
+                            payload.get("sessionId")
+                            or payload.get("relaySessionId")
+                            or ""
+                        )
+                    if payload_type == "ready" or talk_type == "session.ready":
+                        self._mark_ready(session_id)
+                    if name == "talk.event" and self._listener is not None:
                         result = self._listener(payload)
                         if asyncio.iscoroutine(result):
                             await result

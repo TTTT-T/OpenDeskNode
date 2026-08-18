@@ -6,7 +6,8 @@ from dataclasses import dataclass
 import json
 import os
 from pathlib import Path
-from typing import Optional
+import subprocess
+from typing import Any, Mapping, Optional
 
 
 def _env_text(name: str, default: str) -> str:
@@ -21,24 +22,77 @@ def _env_int(name: str, default: int) -> int:
     return int(raw)
 
 
+def _openclaw_config_path() -> Path:
+    return Path(
+        _env_text("OPENCLAW_CONFIG", str(Path.home() / ".openclaw" / "openclaw.json"))
+    )
+
+
+def _load_openclaw_config() -> dict[str, Any]:
+    path = _openclaw_config_path()
+    if not path.is_file():
+        return {}
+    try:
+        payload = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _resolve_exec_secret(payload: Mapping[str, Any], ref: Mapping[str, Any]) -> str:
+    secret_id = ref.get("id")
+    provider_name = ref.get("provider")
+    if not isinstance(secret_id, str) or not isinstance(provider_name, str):
+        return ""
+    provider = ((payload.get("secrets") or {}).get("providers") or {}).get(
+        provider_name
+    ) or {}
+    command = provider.get("command")
+    if not isinstance(command, str) or not command:
+        return ""
+    args = provider.get("args") or []
+    if not isinstance(args, list):
+        return ""
+    request = json.dumps(
+        {
+            "protocolVersion": 1,
+            "provider": provider_name,
+            "ids": [secret_id],
+        }
+    ).encode("utf-8")
+    try:
+        completed = subprocess.run(
+            [command, *[str(item) for item in args]],
+            input=request,
+            capture_output=True,
+            timeout=5,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    if completed.returncode != 0:
+        return ""
+    try:
+        body = json.loads(completed.stdout.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return ""
+    value = (body.get("values") or {}).get(secret_id)
+    return value.strip() if isinstance(value, str) else ""
+
+
 def load_gateway_token() -> str:
     explicit = os.getenv("EVA_VOICE_BRIDGE_GATEWAY_TOKEN") or os.getenv(
         "OPENCLAW_GATEWAY_TOKEN"
     )
     if explicit and explicit.strip():
         return explicit.strip()
-    config_path = Path(
-        _env_text("OPENCLAW_CONFIG", str(Path.home() / ".openclaw" / "openclaw.json"))
-    )
-    if not config_path.is_file():
-        return ""
-    try:
-        payload = json.loads(config_path.read_text())
-    except (OSError, json.JSONDecodeError):
-        return ""
-    auth = (payload.get("gateway") or {}).get("auth") or {}
-    token = auth.get("token")
-    return token.strip() if isinstance(token, str) else ""
+    payload = _load_openclaw_config()
+    token = ((payload.get("gateway") or {}).get("auth") or {}).get("token")
+    if isinstance(token, str):
+        return token.strip()
+    if isinstance(token, dict) and token.get("source") == "exec":
+        return _resolve_exec_secret(payload, token)
+    return ""
 
 
 @dataclass(frozen=True)

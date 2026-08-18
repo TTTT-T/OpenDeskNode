@@ -13,7 +13,8 @@ PYTHON_CACHE="${PYTHONPYCACHEPREFIX:-/tmp/esp32-phase-2c-pycache}"
 
 cd "$ROOT_DIR"
 PYTHONPYCACHEPREFIX="$PYTHON_CACHE" "$PYTHON_BIN" -m unittest \
-  tests.test_bridge_protocol tests.test_bridge_audio tests.test_bridge_c0 -v
+  tests.test_bridge_protocol tests.test_bridge_audio tests.test_bridge_c0 \
+  tests.test_bridge_config -v
 PYTHONPYCACHEPREFIX="$PYTHON_CACHE" "$PYTHON_BIN" -m py_compile \
   bridge/__init__.py bridge/protocol.py bridge/audio.py bridge/config.py \
   bridge/talk.py bridge/session.py bridge/app.py bridge/__main__.py

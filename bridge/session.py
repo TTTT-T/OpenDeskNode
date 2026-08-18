@@ -136,7 +136,7 @@ class DeviceSession:
         kind = event.get("type")
         talk_event = event.get("talkEvent") or {}
         talk_type = talk_event.get("type")
-        if kind == "audio" or talk_type == "output.audio.delta":
+        if kind in {"audio", "audioDelta"} or talk_type == "output.audio.delta":
             raw = event.get("audioBase64")
             if not raw:
                 return
@@ -144,7 +144,7 @@ class DeviceSession:
             pcm16 = self._down.process(pcm24)
             await self._send_downlink(pcm16)
             return
-        if kind == "audio_done" or talk_type == "output.audio.done":
+        if kind in {"audio_done", "audioDone"} or talk_type == "output.audio.done":
             leftover = self._down_frames.flush()
             if leftover:
                 padded = leftover + b"\x00" * (FRAME_BYTES - len(leftover))
