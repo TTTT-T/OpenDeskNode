@@ -9,7 +9,7 @@
 1. 运行 `git status --short --branch`，确认分支、未提交修改和工作基线。
 2. 阅读 `docs/PROJECT_STATE.md`：确认当前 Phase、已验收基线、最近完成、当前假设与未验证项。
 3. 打开 `PROJECT_STATE.md` 指向的当前 Phase 文档（若有），确认目标、非目标、验收标准与风险。
-4. 只按需阅读相关 canonical 文档：产品需求 `docs/PRODUCT_REQUIREMENTS.md`、当前架构 `docs/ARCHITECTURE.md`、阶段顺序 `docs/ROADMAP.md`、当前有效决策 `docs/DECISIONS.md`；只打开与当前任务相关且状态有效的 ADR。
+4. 只按需阅读相关 canonical 文档：产品需求 `docs/PRODUCT_REQUIREMENTS.md`、当前架构 `docs/ARCHITECTURE.md`、阶段顺序 `docs/ROADMAP.md`、当前有效决策 `docs/DECISIONS.md`；文档归属以 `docs/DOCUMENT_INDEX.md` 为准。只打开与当前任务相关且状态有效的 ADR。
 5. 最后只检查当前 Phase 涉及的代码、测试、配置和必要历史。
 
 小型局部任务可缩短检查，但不能跳过与改动直接相关的架构边界、ADR 或工作区状态。只有证据不足时才回溯相关阶段报告和 Git 历史。
@@ -25,6 +25,7 @@
 ## 文档职责与事实纪律
 
 - `docs/PROJECT_STATE.md`：唯一的当前阶段/状态入口、已验收基线、最近完成、当前假设与未验证项。
+- `docs/DOCUMENT_INDEX.md`：文档 inventory 与 canonical owner；一个概念只读一份。
 - `docs/PRODUCT_REQUIREMENTS.md`：canonical 产品需求与已确认行为；待定项必须单独标注。
 - `docs/ARCHITECTURE.md`：当前系统是什么；架构变化时直接更新当前描述，不在此堆叠讨论历史。
 - `docs/ROADMAP.md`：阶段顺序、目标与退出门槛；当前状态以 PROJECT_STATE 为准。
@@ -32,6 +33,7 @@
 - `docs/decisions/`：ADR 完整历史与变更规则。
 - `docs/DELIVERY_WORKFLOW.md`：Phase、验收、失败处理、升级咨询和阶段报告规范。
 - `docs/phase-reports/`：已完成正式 Phase 的简短结果证据，不复制完整 diff。
+- `docs/PHASE*.md`：阶段开题/规划；完成后不是当前架构事实源。
 - `docs/archive/`：已被取代的历史文档，默认不加载。
 
 不得把目录名、临时讨论、未验证推测或计划中的设计写成已确认事实。发现文档与代码不一致时，以可复现的代码、测试、日志和接口证据判定现状，并在同一任务内修正文档。

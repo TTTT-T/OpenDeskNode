@@ -1,8 +1,8 @@
-# Phase 1C — Stock Display Skeleton（当前 Phase 规划）
+# Phase 1C — Stock Display Skeleton
 
-- 状态：已完成并验收（2026-08-15）
-- 入口：[PROJECT_STATE.md](PROJECT_STATE.md)
-- 注意：本文件是规划/当前阶段文档；完成后的结果证据按 [DELIVERY_WORKFLOW.md](DELIVERY_WORKFLOW.md) 写入 `docs/phase-reports/`，两者不重复。
+> **Historical phase definition** — 不是当前架构事实源。
+> 状态：已完成并验收（2026-08-15）。
+> 结果：[phase-01c-stock-display-skeleton.md](phase-reports/phase-01c-stock-display-skeleton.md)。
 
 ## 目标
 

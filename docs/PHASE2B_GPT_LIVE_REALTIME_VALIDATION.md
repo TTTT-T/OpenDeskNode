@@ -1,8 +1,12 @@
 # Phase 2B — OpenClaw GPT-Live Realtime Architecture Validation（阶段定义）
 
-状态：Software Complete（结论以 [报告](PHASE2B_REALTIME_VALIDATION_REPORT.md) 为准）。
+> **Historical phase definition** — 开题计划，不是当前架构事实源。
+> 状态：**Completed / Accepted for architecture progression**。
+> 短报告：[phase-02b-realtime-validation.md](phase-reports/phase-02b-realtime-validation.md)；
+> 详细证据：[PHASE2B_REALTIME_VALIDATION_REPORT.md](PHASE2B_REALTIME_VALIDATION_REPORT.md)。
+
 日期：2026-08-18；分支 `phase-2b-realtime`。
-本文是开题时的验证计划，其中若干假设已被实测修正，**不回写为当时已知**：
+本文保留开题时的验证计划，其中若干假设已被实测修正，**不回写为当时已知**：
 
 - OpenClaw Gateway 在 **Mac mini**，不是 NAS（NAS 是 Stock Gateway）。
 - 可用模型是 `gpt-realtime-2.1`，不是 `gpt-live-1-codex`。

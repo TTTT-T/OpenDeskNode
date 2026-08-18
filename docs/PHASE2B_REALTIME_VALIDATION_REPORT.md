@@ -1,7 +1,9 @@
 # PHASE2B — OpenClaw GPT-Live Realtime Architecture Validation Report
 
-状态：**Software Complete**（2026-08-18）。产品主链 R1/R2 PASS；R0 浏览器
-WebRTC FAIL（同模型问题，非产品路径）。
+短入口：[phase-02b-realtime-validation.md](phase-reports/phase-02b-realtime-validation.md)。
+
+状态：**Completed / Accepted for architecture progression**（2026-08-18）。
+产品主链 R1/R2 PASS；R0 浏览器 WebRTC FAIL（non-product path / non-blocking）。
 分支：`phase-2b-realtime`；开题：2026-08-18。
 阶段定义：[PHASE2B_GPT_LIVE_REALTIME_VALIDATION.md](PHASE2B_GPT_LIVE_REALTIME_VALIDATION.md)。
 

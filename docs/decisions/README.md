@@ -11,6 +11,7 @@
 | [0003](0003-v1-voice-pipeline.md) | v1 采用 Xiaozhi ASR → GPT → TTS | Superseded | 2026-08-13 | 语音与 OpenAI 集成 | 0004 |
 | [0004](0004-clean-product-firmware.md) | Xiaozhi 冻结为 reference，产品采用独立 ESP-IDF 固件 | Accepted | 2026-08-15 | 固件、语音、云边界 | 替代 0001 产品基底与 0003；语音后端路径由 0005 细化 |
 | [0005](0005-openclaw-realtime-gateway-relay.md) | 语音主链为 OpenClaw Talk gateway-relay + OpenAI Realtime + EVA consult | Accepted | 2026-08-18 | 语音链路、部署拓扑 | 细化 0004 语音路径；Stock 边界仍属 0002 |
+| [0006](0006-eva-voice-bridge-thin-adapter.md) | EVA Voice Bridge 为薄协议/音频桥；废弃 Compute Node / 统一 NAS 语音主链 | Accepted | 2026-08-18 | Voice Bridge 边界、与 OpenClaw Gateway 分离 | 细化 0005；替代他分支历史 0006/0007 产品路径 |
 
 有效状态包括：`Proposed`、`Accepted`、`Superseded`、`Deprecated`、`Rejected`。实现时只把 `Accepted` 且未被替代的记录视为约束。
 

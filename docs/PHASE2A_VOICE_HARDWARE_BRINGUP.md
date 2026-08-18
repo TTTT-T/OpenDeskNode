@@ -1,8 +1,11 @@
 # Phase 2A — Voice Hardware Bring-up
 
-状态：已完成，等待用户验收（分支 `phase-2a-voice-hardware-bringup`，基线 commit `f7b7568`）。
-本文是 Phase 2A 的目标与验收定义；完成证据见
-[Phase 2A 报告](PHASE2A_REPORT.md)。
+> **Historical phase definition** — 记录当时计划做什么，不是当前架构事实源。
+> 状态：已完成并验收（2026-08-18 用户确认）。
+> 短报告：[phase-02a-voice-hardware-bringup.md](phase-reports/phase-02a-voice-hardware-bringup.md)；
+> 详细证据：[PHASE2A_REPORT.md](PHASE2A_REPORT.md)。当前架构见 [ARCHITECTURE.md](ARCHITECTURE.md)。
+
+原分支 `phase-2a-voice-hardware-bringup`，基线 commit `f7b7568`。
 
 ## 目标（单一）
 

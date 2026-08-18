@@ -1,5 +1,8 @@
 # Phase 1B.1 — Clean Firmware Bootstrap
 
+> **Historical phase definition / 详细记录** — 不是当前架构事实源。
+> 短报告：[phase-01b1-clean-firmware-bootstrap.md](phase-reports/phase-01b1-clean-firmware-bootstrap.md)。
+
 日期：2026-08-15
 
 ## 架构纠偏

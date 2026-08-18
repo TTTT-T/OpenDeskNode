@@ -5,4 +5,7 @@
 
 ## 归档清单
 
-- [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md)（2026-08-15 归档）：产品目标/约束拆分并入 PRODUCT_REQUIREMENTS.md，当前状态/假设/未验证项并入 PROJECT_STATE.md 后被取代。
+- [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md)（2026-08-15 归档）：产品目标/约束拆分并入 PRODUCT_REQUIREMENTS.md，当前状态/假设/未验证项并入 PROJECT_STATE.md 后被取代。其中「自有 Voice Gateway + OpenAI Realtime」表述已过期，当前架构见 [ARCHITECTURE.md](../ARCHITECTURE.md)。
+
+他分支上的 Compute Node / 统一 NAS Gateway / VOICE_PROTOCOL v1-v2 不在本目录；
+它们留在 `dev` / `phase-2b-r`，清单见 [DOCUMENT_INDEX.md](../DOCUMENT_INDEX.md)。

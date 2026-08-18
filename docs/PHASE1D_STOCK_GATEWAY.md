@@ -1,5 +1,8 @@
 # Phase 1D — Stock Gateway
 
+> **Historical phase definition** — 不是当前架构事实源。
+> 结果：[phase-01d-stock-gateway.md](phase-reports/phase-01d-stock-gateway.md)。
+
 状态：已完成并验收（NAS 容器与非交易时段运行时证据；交易时段补测保留）
 启动日期：2026-08-15；验收日期：2026-08-16
 前置基线：Phase 1D.0 commit `9546c90`

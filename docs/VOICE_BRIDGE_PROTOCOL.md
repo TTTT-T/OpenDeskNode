@@ -1,0 +1,154 @@
+# EVA Voice Bridge Protocol — draft 0
+
+状态：**Phase 2C 工作草案**，不是已验收合同。
+Owner：Phase 2C。[阶段定义](PHASE2C_EVA_VOICE_BRIDGE.md)。
+参考：`phase-2b-r` 的 VOICE_PROTOCOL v2 conversation/turn/barge-in 语义。
+**不要照搬 v1/v2，也不要把 OpenClaw API 名称写入本协议。**
+
+## 1. 角色
+
+- **Device**：ESP32 Voice Edge。
+- **Bridge**：EVA Voice Bridge（本协议服务端）。
+- OpenClaw Talk 只存在于 Bridge 下游，设备不可见。
+
+一条 WebSocket 连接同时只承载一个 conversation。
+
+## 2. 传输
+
+- WebSocket，LAN only。建议路径：`ws://<bridge-host>:<port>/voice/v0`。
+- 文本帧 = 一条完整 JSON 控制消息。
+- 二进制帧 = 16 字节头 + PCM 载荷。
+- 连接后第一条必须是 `hello`。版本不匹配：`hello_error` 后关闭。
+
+发现与认证本阶段不做；`hello` 预留 `auth` 字段，v0 忽略。
+
+## 3. 音频合同
+
+| 段 | 格式 | 谁负责 |
+| --- | --- | --- |
+| ESP32 → Bridge | 16 kHz, s16le, mono, 20 ms 帧（320 samples / 640 B） | Device |
+| Bridge 内部（设备侧） | 同上 | Bridge |
+| Bridge → Talk `appendAudio` | pcm16 / **24 kHz** / mono / base64 | Bridge 上采样 |
+| Talk → Bridge `output.audio.delta` | pcm16 / **24 kHz** / mono / base64 | OpenClaw 硬编码 |
+| Bridge → ESP32 | 16 kHz, s16le, mono, 20 ms | Bridge 下采样 |
+
+codec 标识：`pcm_s16le_16k_mono`。双方 `hello` 只接受该值。
+时间戳：发送方单调毫秒，仅诊断。seq：每方向每 turn 从 0 递增。
+jitter：接收方对乱序/重复计数，不中断会话；播放侧用有界 jitter buffer，
+深度在 C2/C3 实测后记录，不先写死。
+
+24 kHz 证据：OpenClaw 2026.7.1-2 `dist/talk-Caq_w59s.js` 创建 relay 时
+`audioFormat = REALTIME_VOICE_AUDIO_FORMAT_PCM16_24KHZ`。
+
+## 4. 二进制帧头（16 字节，小端）
+
+| 偏移 | 大小 | 字段 |
+| --- | --- | --- |
+| 0 | 1 | magic `0xA5` |
+| 1 | 1 | version `0` |
+| 2 | 1 | flags：bit0=utterance 首帧，bit1=末帧 |
+| 3 | 1 | reserved 0 |
+| 4 | 4 | conversation_id u32 |
+| 8 | 4 | seq u32 |
+| 12 | 4 | ts_ms u32 |
+
+未知 conversation 或已结束 conversation 的帧：静默丢弃 + 计数。
+
+## 5. 设备状态
+
+```text
+IDLE → (wake/manual) LISTENING → UPSTREAMING → PLAYING
+                  ↑                 │
+                  └── follow-up ────┘
+PLAYING → (local barge-in) INTERRUPTING → UPSTREAMING
+any → ERROR → 重连 hello → IDLE
+```
+
+设备不实现 Agent conversation engine。
+
+## 6. 控制消息
+
+通用：`type`。涉及会话的带 `conversation_id`。错误：`code` + 可选 `message`。
+
+### Device → Bridge
+
+| type | 字段 | 语义 |
+| --- | --- | --- |
+| `hello` | `protocol`(=0), `device_id`, `fw_version`, `audio{sample_rate,channels,bits,frame_ms,codec}` | 能力声明 |
+| `ping` / `pong` | `ts_ms` | 保活 |
+| `wake` | `phrase?` | 本地唤醒（「你好 EVA」或测试按键） |
+| `conversation_open` | `reason`(`wake`/`manual`) | 请求会话 |
+| `speech_start` | `conversation_id` | 本 turn 采集开始 |
+| `speech_end` | `conversation_id` | 本 turn 采集结束 |
+| `interrupt` | `conversation_id` | **已本地停播**；Bridge 对 Talk `cancelOutput` |
+| `cancel` | `conversation_id`, `reason` | 作废当前会话 |
+| `conversation_end` | `conversation_id`, `reason`(`timeout`/`user`/`error`) | 设备侧结束 |
+| `error` | `code`, `message` | 设备错误 |
+
+### Bridge → Device
+
+| type | 字段 | 语义 |
+| --- | --- | --- |
+| `hello_ok` | `protocol`, `bridge`, `keepalive_ms` | 接受 |
+| `hello_error` | `code` | 随后关闭 |
+| `ping` / `pong` | `ts_ms` | 保活 |
+| `conversation_opened` | `conversation_id`, `codec`, `frame_ms` | 会话建立（Talk session 已 ready 或即将 ready） |
+| `conversation_reject` | `code`(`busy`/`backend_unavailable`/`invalid`) | 拒绝；设备不重试轰炸 |
+| `playback_start` / `playback_end` | `conversation_id` | 下行边界 |
+| `conversation_end` | `conversation_id`, `reason` | 任一方可发；接收方**不得回复** |
+| `error` | `code`, `message` | 协议错误 |
+
+错误码：`unsupported_version` `invalid_message` `unknown_conversation`
+`busy` `backend_unavailable` `timeout` `internal`。未知 code 必须容忍。
+
+## 7. 流程
+
+### 唤醒后连续多轮
+
+```text
+Device                              Bridge                         Talk
+  │ hello / hello_ok                 │                              │
+  │ wake / conversation_open ───────▶│ talk.session.create ────────▶│
+  │◀──── conversation_opened ────────│◀──── session.ready ──────────│
+  │ speech_start + 16k PCM ─────────▶│ resample 24k appendAudio ───▶│
+  │ speech_end ─────────────────────▶│                              │
+  │◀──── playback_start + 16k PCM ───│◀──── output.audio.delta ─────│
+  │◀──── playback_end ───────────────│◀──── output.audio.done ──────│
+  │   （同一 conversation，无需再唤醒） │                              │
+  │ speech_start …                   │                              │
+```
+
+### Barge-in（本地先停）
+
+```text
+PLAYING 中用户开口
+  → Device 立即停 ES8311、清播放队列
+  → interrupt
+  → Bridge talk.session.cancelOutput
+  → speech_start + 新上行
+  → 同 conversation 进入新 turn
+```
+
+「没事了」等结束语由 Realtime/EVA 判断；Bridge 收到会话结束事件后发
+`conversation_end(completed)`。设备不硬编码中文结束词。
+
+## 8. 保活、断线、恢复
+
+- 默认 `keepalive_ms=10000`；2×周期+2 s 无 pong → 断开，指数退避重连
+  （1 s 起、×2、上限 60 s、±20% 抖动）。
+- 断线后 conversation 作废（v0 不恢复 Talk session）；重连后重新 hello。
+- Bridge 重启 / Gateway 重启 / Wi-Fi 闪断：设备必须自行恢复。
+  **不得设计成必须重启 ESP32。**
+- ESP32 断开：Bridge 关闭对应 Talk session 并清理映射。
+
+## 9. 缓冲
+
+- 上行 ring 建议 64 KB ≈ 2 s @16 kHz；满则 drop-oldest；累计丢弃 ≥1.5 s
+  判 `transport_error`。
+- interrupt/cancel/end 后清空上、下行队列；迟到旧 conversation 帧丢弃。
+- 不得影响股票看板。
+
+## 10. 兼容
+
+新增可选字段不升版本；消息类型或语义变化升 `protocol`。
+忽略未知字段与未知 type。OpenClaw 名称不得进入本协议。

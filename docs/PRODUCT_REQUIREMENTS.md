@@ -6,7 +6,7 @@
 
 ## 产品定位
 
-在 Waveshare ESP32-S3-RLCD-4.2（ESP32-S3-WROOM-1-N16R8：16 MB Flash、8 MB PSRAM、400×300 单色全反射 RLCD、双麦 ES7210、ES8311 codec、BOOT/KEY 等外设）上构建长期稳定、可维护的 A 股桌面看板；语音是附加能力，经 Mac 上 OpenClaw EVA 接入，不是独立 Voice Terminal。
+在 Waveshare ESP32-S3-RLCD-4.2（ESP32-S3-WROOM-1-N16R8：16 MB Flash、8 MB PSRAM、400×300 单色全反射 RLCD、双麦 ES7210、ES8311 codec、BOOT/KEY 等外设）上构建长期稳定、可维护的 A 股桌面看板。语音是附加能力，经 Mac EVA Voice Bridge → OpenClaw Talk → EVA 接入，不是独立 Voice Terminal，也不是看板运行依赖。
 
 ## 已确认：4 股 A 股看板行为
 
@@ -72,13 +72,13 @@
 
 以上能力不在当前路线内，除非用户重新确认。
 
-## 已确认：语音方向（附加能力，ADR-0005）
+## 已确认：语音方向（附加能力，ADR-0005 / ADR-0006）
 
-1. 正式固件本地管理唤醒词、麦克风、扬声器与 AEC；不包含 Xiaozhi 激活、OTA、MCP 或云端 ASR/LLM/TTS，也不访问 Xiaozhi 官方端点。
-2. 实时听说经 Mac OpenClaw Talk `gateway-relay` 接入 OpenAI Realtime `gpt-realtime-2.1`；自然语言与工具经 `eva` agent consult。ESP32 不直连 OpenAI，不实现 OpenClaw 协议。
-3. 目标唤醒词为「你好 EVA」（真机唤醒率 Pending；当前无自定义 WakeNet 模型）。
+1. 正式固件本地管理唤醒词、麦克风、扬声器、AEC、VAD 与本地 barge-in 停播；不包含 Xiaozhi 激活、OTA、MCP 或云端 ASR/LLM/TTS，也不访问 Xiaozhi 官方端点。
+2. 实时听说经 Mac EVA Voice Bridge → OpenClaw Talk `gateway-relay` 接入 OpenAI Realtime `gpt-realtime-2.1`；自然语言与工具经 `eva` agent consult。ESP32 不直连 OpenAI，不实现 OpenClaw 协议。
+3. 目标唤醒词为「你好 EVA」（真机唤醒率 Pending；当前无自定义 WakeNet 模型）。一次唤醒后连续多轮，不必每轮再唤醒。
 4. 股票问答若发生，必须经 NAS Stock Gateway 同源数据，不用模型记忆猜价格。
-5. 音频基线：16 kHz/16-bit/mono PCM（Phase 2A）。设备协议尚未实现。
+5. 设备音频基线：16 kHz/16-bit/mono PCM（Phase 2A）。Talk 侧为 pcm16/24 kHz；重采样在 Bridge。设备协议见 Phase 2C 草案。
 
 ## 最终产品验收口径
 
@@ -86,7 +86,7 @@
 
 ## 待定项（不得当作已确认）
 
-- ESP32 ↔ Mac Voice Bridge 的设备协议与延迟口径（下一阶段设计）。
+- ESP32 ↔ Mac Voice Bridge 设备协议细节与延迟口径（Phase 2C 草案，未验收）。
 - 「你好 EVA」WakeNet 模型获取/训练与真机唤醒率。
 - headless Bridge 的 ChatGPT OAuth 续期方式。
 

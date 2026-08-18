@@ -1,5 +1,7 @@
 # Phase 2A 报告 — Voice Hardware Bring-up
 
+短入口：[phase-02a-voice-hardware-bringup.md](phase-reports/phase-02a-voice-hardware-bringup.md)。
+
 日期：2026-08-16 ~ 2026-08-17（会话内完成）；分支 `phase-2a-voice-hardware-bringup`。
 基线：commit `f7b7568`（Phase 1E 完成态）。目标与非目标定义见
 [PHASE2A_VOICE_HARDWARE_BRINGUP.md](PHASE2A_VOICE_HARDWARE_BRINGUP.md)。

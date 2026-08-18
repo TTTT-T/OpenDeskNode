@@ -1,5 +1,8 @@
 # Phase 1E — Live Stock Dashboard
 
+> **Historical phase definition** — 不是当前架构事实源。
+> 结果：[phase-01e-live-stock-dashboard.md](phase-reports/phase-01e-live-stock-dashboard.md)。
+
 状态：已完成并验收
 启动日期：2026-08-16
 验收日期：2026-08-16

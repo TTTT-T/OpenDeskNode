@@ -59,14 +59,24 @@
 11. **语音主链：OpenClaw Talk gateway-relay + OpenAI Realtime + EVA consult**（[ADR-0005](decisions/0005-openclaw-realtime-gateway-relay.md)，Accepted；Phase 2B R1/R2 验证）
     - 实时听说使用 `gpt-realtime-2.1`（`gpt-live-1-codex` 不可用于 platform realtime）。
     - 传输用 `gateway-relay`；浏览器 WebRTC 已 FAIL，且不是 ESP32 路径。
-    - `brain=agent-consult` 调用同一 `eva` agent；记忆与工具跨渠道共享已验证。
-    - Mac mini 跑 OpenClaw Gateway 与未来薄 Voice Bridge；ESP32 只做 AEC/VAD/唤醒/PCM。
-    - ChatGPT OAuth-only 已验证可建 session；headless 续期未验证。
+     - `brain=agent-consult` 调用同一 `eva` agent；记忆与工具跨渠道共享已验证。
+     - Mac mini 跑 OpenClaw Gateway 与 EVA Voice Bridge；ESP32 只做 AEC/VAD/唤醒/PCM。
+     - ChatGPT OAuth-only 已验证可建 session；headless 续期未验证。
+
+12. **EVA Voice Bridge 是独立薄桥，不是 Compute Node，也不是 OpenClaw Gateway**（[ADR-0006](decisions/0006-eva-voice-bridge-thin-adapter.md)，Accepted）
+    - Bridge 只做 ESP32 连接、PCM framing、session 映射、事件翻译、buffer、
+      16 kHz↔24 kHz 重采样、health/reconnect。
+    - 不做 STT/TTS/LLM/tools/memory/HA/日历/股票。
+    - Stock Gateway 与 OpenClaw Gateway 继续分离；不为「统一 Gateway」合并。
+    - 产品定位仍是桌面股票看板 + 可选语音（他分支历史 ADR-0005 的约束仍有效，
+      本分支该编号已被 realtime 决策占用，见 [DOCUMENT_INDEX.md](DOCUMENT_INDEX.md)）。
 
 ## 已被替代（仅历史）
 
 - [ADR-0001](decisions/0001-xiaozhi-upstream-integration.md)：Xiaozhi 固件 subtree 集成方式 — Superseded by ADR-0004。
 - [ADR-0003](decisions/0003-v1-voice-pipeline.md)：v1 采用 Xiaozhi ASR → GPT → TTS — Superseded by ADR-0004。
+- 他分支 `0006-unified-gateway-and-mac-ai-node`（NAS 统一 Gateway + Mac ASR/LLM/TTS Compute Node）— Superseded by 本分支 ADR-0006。
+- 他分支 `0007-eva-openclaw-agent-runtime-voice-edge`（NAS OpenClaw Adapter 产品路径）— Superseded by ADR-0005/0006；设备侧 turn 语义可参考。
 
 ## 其他长期工程约束
 

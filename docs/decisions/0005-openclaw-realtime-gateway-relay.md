@@ -6,6 +6,8 @@
 - 关联：细化 [ADR-0004](0004-clean-product-firmware.md) 的语音后端路径（原表述
   “自有 Voice Gateway + OpenAI Realtime API”）；不改变 ADR-0004 的固件基底，
   不改变 [ADR-0002](0002-product-and-stock-boundaries.md) 的 Stock 边界。
+  Bridge 与 Gateway 分离、废弃 Compute Node 主链见
+  [ADR-0006](0006-eva-voice-bridge-thin-adapter.md)。
 - 证据：[PHASE2B_REALTIME_VALIDATION_REPORT.md](../PHASE2B_REALTIME_VALIDATION_REPORT.md)
 
 ## 背景与需要解决的问题
