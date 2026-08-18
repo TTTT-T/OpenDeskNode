@@ -1,6 +1,31 @@
 # 当前系统架构
 
-最后核验：2026-08-16
+最后核验：2026-08-18
+
+## 产品定位与语音拓扑（ADR-0004/0005）
+
+OpenDeskNode 当前核心是桌面股票看板；语音是附加能力。已验证的目标语音拓扑：
+
+```text
+ESP32-S3（Voice Edge，2A 已验收硬件）
+  双麦 ES7210 / AEC / VAD / 唤醒「你好 EVA」/ ES8311 / 16 kHz PCM
+        │  未来：稳定设备 PCM 协议（尚未实现）
+        ▼
+Mac mini
+  EVA Voice Bridge（薄，未实现：PCM ↔ OpenClaw Talk）
+  OpenClaw Gateway  :18789 loopback
+        │  Talk transport=gateway-relay
+        ▼
+  OpenAI Realtime  gpt-realtime-2.1     ← 听 / 说 / VAD / 连续对话 / 打断
+        │  brain=agent-consult
+        ▼
+  OpenClaw EVA agent                    ← 记忆 / 工具 / 行动
+```
+
+- **两个 Gateway 不得混称**：NAS `terrencenas.local:8000` = Stock Gateway；
+  Mac `127.0.0.1:18789` = OpenClaw Gateway。
+- ESP32 不直连 OpenAI，不实现 OpenClaw 协议，不持有第三方 Key。
+- `gpt-live-1-codex` 已证实不能用于 platform realtime，不得再写入目标拓扑。
 
 ## 固件基线与边界
 
@@ -107,24 +132,26 @@ mDNS、登录或公网暴露；服务已部署在 TerrenceNAS 的 Container Stat
 
 正式固件不包含 Xiaozhi 激活、OTA、WebSocket/MQTT 业务协议、MCP 或云端 ASR/LLM/TTS，也不访问 `xiaozhi.me`、`api.tenclass.net` 或其他 Xiaozhi 官方服务。
 
-## 目标形态：ESP32 + 共享 LAN Gateway
+## 目标形态：Stock 走 NAS，语音走 Mac OpenClaw
 
-当前已有效的能力是 board/display/network（Phase 1B.1 真机验收）；股票与语音是目标形态，共用同一台自部署 LAN Gateway：
+当前已有效：board/display/network（1B.1）、真实 4 股看板（1E）、音频硬件
+（2A）。语音软件主链已由 Phase 2B 验证，固件 Voice Bridge 尚未实现：
 
 ```text
-ESP32-S3（轻量客户端）                  自部署 LAN Gateway（同一后端）
-┌─ board / display / network ─┐        ┌─ Stock Gateway ──────────────┐
-│  dashboard + stock client ──┼─HTTP──▶│  A 股数据 / Provider 适配     │
-│  voice hardware/session ────┼─audio─▶│  watchlist / cache / web 管理 │
-│  local wake word            │        │  Voice Gateway 路径           │
-└─────────────────────────────┘        │  └─ OpenAI Realtime API       │
-                                       └──────────────────────────────┘
+ESP32-S3                              NAS                         Mac mini
+┌─ stock dashboard ──HTTP────────────▶ Stock Gateway :8000
+│                                      watchlist / cache / web
+│
+└─ audio HW（2A）──PCM（未来）───────────────────────────────▶ Voice Bridge
+                                                              OpenClaw :18789
+                                                                    │
+                                                                    ▼
+                                                              OpenAI Realtime
+                                                              + EVA consult
 ```
 
-- ESP32 保持轻量：只负责显示、按键、Wi-Fi、音频采集/播放与本地唤醒词；不直连复杂互联网 API，不持有任何第三方凭据。
-- Stock Gateway 拥有 A 股行情数据、watchlist（4 股）、cache 与后续 web 管理页；Dashboard 与 GPT 股票问答同源读取。
-- Voice Gateway 路径拥有 OpenAI Realtime 凭据与会话；本地唤醒词、麦克风和扬声器由正式固件自主管理。
-- OpenAI 与行情 Provider 凭据只存在服务端安全存储，不进入 ESP32 或 Git。
+- Stock 与语音故障隔离：Mac/OpenClaw 不可用不得拖垮 NAS Stock 与看板。
+- OpenAI / 行情凭据不进入 ESP32 或 Git。ChatGPT OAuth 只存在 Mac OpenClaw。
 
 ## 不可破坏边界
 

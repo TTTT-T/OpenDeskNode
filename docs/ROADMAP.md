@@ -11,14 +11,14 @@
 | 1D | Stock Gateway（自部署行情后端，详见 [Phase 1D 文档](PHASE1D_STOCK_GATEWAY.md)） | 已完成并验收（NAS/非交易时段；交易时段补测保留） |
 | 1E | Live Stock Dashboard（真实行情接入，详见 [Phase 1E 文档](PHASE1E_LIVE_STOCK_DASHBOARD.md)） | 已完成并验收（真机/非交易时段；交易时段补测保留） |
 | 2A | Voice Hardware Bring-up（详见 [Phase 2A 文档](PHASE2A_VOICE_HARDWARE_BRINGUP.md)、[报告](PHASE2A_REPORT.md)） | 已完成并验收（2026-08-18 用户确认；realtime 方向开发基线） |
-| 2B | OpenClaw GPT-Live Realtime Architecture Validation（R0 Browser Realtime / R1 Agent Consult / R2 Gateway Relay；不做 ESP32 集成；详见 [阶段定义](PHASE2B_GPT_LIVE_REALTIME_VALIDATION.md)、[验证报告](PHASE2B_REALTIME_VALIDATION_REPORT.md)） | 进行中（R0–R2 待执行） |
-| 2C | 待 R0–R2 结论后重新定义（候选：ESP32 → Mac EVA Voice Bridge 接口设计与实现） | 阻塞于 2B |
+| 2B | OpenClaw Talk gateway-relay + OpenAI Realtime + EVA consult 验证（详见 [阶段定义](PHASE2B_GPT_LIVE_REALTIME_VALIDATION.md)、[报告](PHASE2B_REALTIME_VALIDATION_REPORT.md)） | Software Complete（R1/R2 PASS；R0 浏览器 WebRTC FAIL，非产品路径） |
+| 2C | ESP32 → Mac EVA Voice Bridge 接口设计与实现（阶段文档待开题） | 可开题 |
 
-2026-08-18 方向冻结：语音主链改为 `ESP32 音频边缘 → Mac Voice Bridge（薄）→
-NAS OpenClaw Gateway → GPT-Live（gpt-live-1-codex）→ openclaw_agent_consult →
-EVA Agent`；旧 “STT → OpenClaw → TTS” 路线及旧 2B/2C 定义暂停作废。旧路线
-实验资产保留在 `dev`（VOICE_PROTOCOL v1 + Mock Gateway）与 `phase-2b-r`
-（ADR-0007 协议 v2）分支，不删除、不合并，除非 R0–R2 后确认仍适用。
+已验证主链（[ADR-0005](decisions/0005-openclaw-realtime-gateway-relay.md)）：
+`ESP32 音频边缘 → Mac Voice Bridge（未实现）→ Mac OpenClaw Gateway →
+OpenAI Realtime gpt-realtime-2.1 → openclaw_agent_consult → EVA`。
+NAS 只跑 Stock Gateway。`gpt-live-1-codex` 不可用于 realtime。
+旧实验资产保留在 `dev`（VOICE_PROTOCOL v1）与 `phase-2b-r`（协议 v2），不删除、不合并。
 
 未验收硬件的检查矩阵见 [HARDWARE_BASELINE.md](HARDWARE_BASELINE.md)。
 

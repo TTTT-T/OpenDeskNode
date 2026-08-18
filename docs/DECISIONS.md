@@ -1,6 +1,6 @@
 # 当前有效决策
 
-最后核验：2026-08-16
+最后核验：2026-08-18
 
 本文件是“当前哪些长期决策有效”的 canonical 入口，只汇总现状。完整背景、候选方案与决策历史见 [decisions/](decisions/README.md)；本文件不替代 ADR。
 
@@ -9,16 +9,17 @@
 1. **Xiaozhi 仅作参考，产品采用干净 ESP-IDF 固件**（[ADR-0004](decisions/0004-clean-product-firmware.md)，Accepted）
    - 正式产品只在 `firmware/product/` 上发展；`firmware/xiaozhi/`（v2.4.2，tag `phase-1b-xiaozhi-reference`）仅作参考。
    - 只按需迁移硬件参数、板级实现与已验证底层驱动，并记录来源与依赖；不迁移 Xiaozhi Application、激活、OTA、业务协议、MCP 或云端 ASR/LLM/TTS。
-   - 语音目标路径：本地唤醒词 + 自有 Voice Gateway + OpenAI Realtime API。
+    - 语音目标路径：本地唤醒词 + OpenClaw Talk `gateway-relay` + OpenAI Realtime + EVA consult（见 [ADR-0005](decisions/0005-openclaw-realtime-gateway-relay.md)）。
 2. **统一 Stock Service 数据边界**（[ADR-0002](decisions/0002-product-and-stock-boundaries.md)，Accepted；其“Xiaozhi 基础设施上的产品层”前提由 ADR-0004 替代）
    - 后端 v1 为模块化单体：Stock Service 拥有 watchlist、canonical models、cache 和 `StockProvider` 适配器。
    - ESP32 Dashboard 与 GPT 工具（`get_stock_quote`、`get_watchlist`、`get_stock_intraday`）只读取同一 Stock Service/cache；首版 HTTP/JSON。
    - Provider 与 OpenAI 凭据只在服务端；ESP32 不持有第三方 Key。
-3. **股票与语音共享自部署 LAN Gateway**（用户已确认方向；Stock 侧边界见 ADR-0002，语音侧见 ADR-0004）
-   - Stock Gateway 拥有 A 股数据、watchlist、cache 与后续 web 管理页；Voice Gateway 路径接入 OpenAI Realtime；两者部署在同一自托管后端。
-   - 不使用 Xiaozhi 官方云或任何第三方托管网关。
+3. **Stock Gateway 与 OpenClaw Gateway 分离**（[ADR-0002](decisions/0002-product-and-stock-boundaries.md) + [ADR-0005](decisions/0005-openclaw-realtime-gateway-relay.md)）
+    - NAS OpenDeskNode Stock Gateway（`terrencenas.local:8000`）是 A 股数据的唯一所有者。
+    - OpenClaw Gateway 运行在 Mac mini（loopback `:18789`），是 EVA / Talk 的内部接口。二者不得混称，语音流量不经过 Stock 服务。
+    - 不使用 Xiaozhi 官方云。OpenAI Realtime 由 Mac 上 OpenClaw Talk 接入（ChatGPT OAuth-only，已验证）。
 4. **ESP32 不直连复杂互联网 API**（ADR-0002/0004 边界的固化）
-   - 固件不持有第三方 Key，不直连带凭据的行情 Provider，不做云 ASR/LLM/TTS；行情与语音能力只经自有 Gateway。
+    - 固件不持有第三方 Key，不直连带凭据的行情 Provider，不做云 ASR/LLM/TTS，不实现 OpenClaw 协议；行情只经 NAS Stock Gateway，语音只经未来 Mac Voice Bridge。
 5. **先股票后语音**（用户已确认路线，见 [ROADMAP.md](ROADMAP.md)）
    - 先完成 1C/1D/1E 的股票显示链路，再推进 Voice 2A/2B/2C。
 6. **看板刷新目标约 10 秒**（用户已确认产品目标，见 [PRODUCT_REQUIREMENTS.md](PRODUCT_REQUIREMENTS.md)）
@@ -53,7 +54,14 @@
    - 失败保留最后成功数据，5 分钟宽限期内不显示错误，超过后显示最后成功
      时间；Gateway canonical stale 立即进入同一状态。
    - Web 动态换股使用固定基础中文字体覆盖（ASCII、U+4E00–U+9FEF、涨跌
-     箭头），不维护股票名称白名单；区间外字符不承诺显示。
+      箭头），不维护股票名称白名单；区间外字符不承诺显示。
+
+11. **语音主链：OpenClaw Talk gateway-relay + OpenAI Realtime + EVA consult**（[ADR-0005](decisions/0005-openclaw-realtime-gateway-relay.md)，Accepted；Phase 2B R1/R2 验证）
+    - 实时听说使用 `gpt-realtime-2.1`（`gpt-live-1-codex` 不可用于 platform realtime）。
+    - 传输用 `gateway-relay`；浏览器 WebRTC 已 FAIL，且不是 ESP32 路径。
+    - `brain=agent-consult` 调用同一 `eva` agent；记忆与工具跨渠道共享已验证。
+    - Mac mini 跑 OpenClaw Gateway 与未来薄 Voice Bridge；ESP32 只做 AEC/VAD/唤醒/PCM。
+    - ChatGPT OAuth-only 已验证可建 session；headless 续期未验证。
 
 ## 已被替代（仅历史）
 

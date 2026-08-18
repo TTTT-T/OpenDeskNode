@@ -6,29 +6,20 @@
 
 ## 当前 Phase
 
-**[Phase 2B — OpenClaw GPT-Live Realtime Architecture Validation]
-(PHASE2B_GPT_LIVE_REALTIME_VALIDATION.md)** — Software Complete
-（[报告](PHASE2B_REALTIME_VALIDATION_REPORT.md)）。产品主链 R1/R2 PASS；
-R0 浏览器 WebRTC FAIL（模型不支持，非产品路径）。允许进入 ESP32 Voice
-Bridge 接口设计。
+**无进行中 Phase。** Phase 2B 验证已完成（[报告](PHASE2B_REALTIME_VALIDATION_REPORT.md)）。
+产品主链 R1/R2 PASS；R0 浏览器 WebRTC FAIL（非产品路径）。下一阶段为
+ESP32 → Mac EVA Voice Bridge，待开题。
 
-2026-08-18 用户冻结新的语音架构方向并暂停旧路线：
+已验证主链（[ADR-0005](decisions/0005-openclaw-realtime-gateway-relay.md)）：
 
-- 新主链：ESP32（音频边缘：双麦/AEC/VAD/本地唤醒“你好 EVA”/ES8311/PCM）→
-  Mac mini **EVA Voice Bridge**（薄桥）→ NAS **OpenClaw Gateway** →
-  **OpenAI Realtime `gpt-realtime-2.1`**（实时听说/VAD/连续对话/打断）→
-  `openclaw_agent_consult` → **OpenClaw EVA Agent**（memory/tools/HA/日历/自动化）。
-- ESP32 不承担 STT/TTS/LLM/Agent；一切基于 “STT → OpenClaw → TTS” 的旧开发
-  停止。R0–R2 全部 PASS 前禁止：自建 streaming STT/TTS、Whisper 主链、旧
-  Voice Gateway、ESP32 直连 OpenAI、ESP32 承担 OpenClaw 协议、为未验证架构
-  大规模重构、ESP32 集成开发（禁止清单见阶段定义）。
-- **Phase 2A 已由用户验收**（2026-08-18 确认），其硬件基线重新作为开发起点，
-  不得破坏：双麦采集（ES7210）、ES8311、16 kHz/16-bit PCM、AEC、录音/播放
-  测试、稳定性基线（证据：[PHASE2A_REPORT.md](PHASE2A_REPORT.md)）。
-- R0–R2 为用户人工执行项（Mac 浏览器 + ChatGPT OAuth + 真人中文语音）；
-  Agent 负责记录模板、结果分析与报告定稿。
-- ADR-0006 中 “Mac 本地 ASR/LLM/TTS Compute Node” 路线自 2026-08-18 起停止
-  驱动开发；正式 ADR 变更待 R0–R2 结论后随下一阶段架构决策创建。
+```text
+ESP32（2A 音频边缘）→ Mac Voice Bridge（未实现）→ Mac OpenClaw Gateway
+  → OpenAI Realtime gpt-realtime-2.1 → consult → EVA agent
+```
+
+两个 Gateway：NAS `terrencenas.local:8000` = Stock；Mac `:18789` = OpenClaw。
+禁止：自建 STT/TTS、ESP32 直连 OpenAI、OpenClaw 协议下沉到固件。
+Phase 2A 硬件基线已验收，不得破坏。
 
 ### 分支拓扑（2026-08-18 起）
 
@@ -141,8 +132,8 @@ easyquotation/Tencent 和 Baidu direct 做真实、低频、短连续调用，�
 - `firmware/product/`：独立 ESP-IDF v6.0.2 产品固件（唯一正式固件工程）。Phase 1B.1 已在真机验收 Boot、16 MB Flash、8 MB octal PSRAM、RLCD/LVGL、BOOT 按键与 Wi-Fi station。详见 [Phase 1B.1 报告](phase-reports/phase-01b1-clean-firmware-bootstrap.md)与[详细记录](PHASE1B1_CLEAN_FIRMWARE_BOOTSTRAP.md)。
 - `firmware/xiaozhi/`：Xiaozhi v2.4.2 冻结硬件参考（annotated tag `phase-1b-xiaozhi-reference`），不是产品固件基底，默认不读取。
 - Stock Gateway Phase 1D 已完成并在 NAS/非交易时段验收；下一交易时段实时推进
-  作为明确补测项保留。Phase 1E 正在把已验收的 stock model/view 切换到
-  Gateway 真实数据；Voice Gateway 尚未开始。
+  作为明确补测项保留。Phase 1E 已把 stock model/view 切到 Gateway 真实数据。
+  语音软件主链已验证；固件 Voice Bridge 尚未开始。
 
 ## Phase 1C 已验收结果
 
@@ -162,7 +153,8 @@ easyquotation/Tencent 和 Baidu direct 做真实、低频、短连续调用，�
 
 ## 最近完成
 
-- [Phase 2A — Voice Hardware Bring-up](PHASE2A_REPORT.md)（2026-08-17 交付 `556acc3`；2026-08-18 用户确认验收，作为 realtime 方向开发基线）
+- [Phase 2B — Realtime 主链验证](PHASE2B_REALTIME_VALIDATION_REPORT.md)（2026-08-18，R1/R2 PASS）
+- [Phase 2A — Voice Hardware Bring-up](PHASE2A_REPORT.md)（2026-08-17 交付 `556acc3`；2026-08-18 用户确认验收）
 - [Phase 1E — Live Stock Dashboard](phase-reports/phase-01e-live-stock-dashboard.md)（2026-08-16）
 - [Phase 1D — Stock Gateway](phase-reports/phase-01d-stock-gateway.md)（2026-08-16）
 - [Phase 1D.0 — A-share Provider Bake-off](phase-reports/phase-01d0-provider-bakeoff.md)（2026-08-15）
@@ -175,13 +167,9 @@ easyquotation/Tencent 和 Baidu direct 做真实、低频、短连续调用，�
 
 ## 下一步
 
-1. 新 ADR：正式替代 ADR-0006 的「Mac 本地 ASR/LLM/TTS」路线；模型写
-   `gpt-realtime-2.1`，传输写 `gateway-relay`，OpenClaw Gateway 在 Mac mini。
-2. 下一阶段开题：ESP32 → Mac EVA Voice Bridge 接口设计（禁止清单仍有效：
-   不自建 STT/TTS、不直连 OpenAI、不把 OpenClaw 协议下沉到 ESP32）。
-3. 运维项（不进固件）：EVA 主模型 zai token 过期；headless OAuth 续期方案。
-4. 旧遗留补测项保留：下一交易时段 Gateway quote/分钟实时推进；2A 遗留
-   WAV 协议限速、AEC 模式对比等（见 PHASE2A_REPORT 已知问题节）。
+1. 开题 Phase 2C：ESP32 → Mac EVA Voice Bridge 接口设计（ADR-0005）。
+2. 运维项（不进固件）：EVA 主模型 zai token 过期；headless OAuth 续期。
+3. 旧遗留补测：下一交易时段 Gateway quote/分钟实时推进；2A WAV 限速与 AEC 模式对比。
 
 ## 重要风险与未验证
 
@@ -212,3 +200,5 @@ easyquotation/Tencent 和 Baidu direct 做真实、低频、短连续调用，�
 - 当前架构：[ARCHITECTURE.md](ARCHITECTURE.md)
 - 阶段顺序：[ROADMAP.md](ROADMAP.md)
 - 当前有效决策：[DECISIONS.md](DECISIONS.md)
+- 语音主链决策：[ADR-0005](decisions/0005-openclaw-realtime-gateway-relay.md)
+- 2B 验证报告：[PHASE2B_REALTIME_VALIDATION_REPORT.md](PHASE2B_REALTIME_VALIDATION_REPORT.md)

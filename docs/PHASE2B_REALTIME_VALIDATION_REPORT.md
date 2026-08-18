@@ -108,8 +108,8 @@ R0 浏览器 webrtc 的 400 同根因。
 1. **R2 核心问题得到肯定答案**：ChatGPT OAuth-only 可以经 gateway-relay 建立
    realtime 语音 session，无需 OpenAI Platform API key。ESP32 Voice Bridge
    的传输前提成立。
-2. **实际可用模型是 `gpt-realtime-2.1`**，不是 `gpt-live-1-codex`。架构图与
-   文档中的"GPT-Live / gpt-live-1-codex"表述需统一修正。
+2. **实际可用模型是 `gpt-realtime-2.1`**，不是 `gpt-live-1-codex`（文档已按
+   ADR-0005 统一）。
 3. OpenClaw relay 路径的服务端错误可完整落日志（对比浏览器路径 400 丢细节），
    适合作为 Bridge 的下游。
 

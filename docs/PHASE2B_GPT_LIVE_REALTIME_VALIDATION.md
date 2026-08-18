@@ -1,9 +1,13 @@
 # Phase 2B — OpenClaw GPT-Live Realtime Architecture Validation（阶段定义）
 
-状态：进行中（R0/R1/R2 待执行）。
-日期：2026-08-18 开题；分支 `phase-2b-realtime`（自 Phase 2A 验收基线 `6982053`
-切出；2A 交付 commit `556acc3`）。
-验证结果回填至 [PHASE2B_REALTIME_VALIDATION_REPORT.md](PHASE2B_REALTIME_VALIDATION_REPORT.md)。
+状态：Software Complete（结论以 [报告](PHASE2B_REALTIME_VALIDATION_REPORT.md) 为准）。
+日期：2026-08-18；分支 `phase-2b-realtime`。
+本文是开题时的验证计划，其中若干假设已被实测修正，**不回写为当时已知**：
+
+- OpenClaw Gateway 在 **Mac mini**，不是 NAS（NAS 是 Stock Gateway）。
+- 可用模型是 `gpt-realtime-2.1`，不是 `gpt-live-1-codex`。
+- R0 浏览器 WebRTC FAIL；产品路径以 R2 `gateway-relay` 为准。
+- 正式决策见 [ADR-0005](decisions/0005-openclaw-realtime-gateway-relay.md)。
 
 ## 背景：2026-08-18 方向冻结
 
@@ -158,10 +162,8 @@ Bridge 传输路径的关键前提，即 R2 的核心问题。
   实际使用的 OpenClaw Talk 配置；R0/R1/R2 每项 PASS/FAIL；实际错误与日志
   摘要；ChatGPT OAuth 与 API key 使用情况；ESP32 Voice Bridge 下一阶段
   接口建议。
-- 下一阶段架构决策（新 ADR，处理 ADR-0006 中 “Mac 本地 ASR/LLM/TTS
-  Compute Node” 路线的替代；该路线自 2026-08-18 起停止驱动开发，正式
-  ADR 变更待本阶段结论）。
-- 仅在 R0/R1/R2 全部 PASS 后开始 ESP32 → Mac Voice Bridge 接口设计。
+- 架构决策已落为 [ADR-0005](decisions/0005-openclaw-realtime-gateway-relay.md)。
+- 产品主链验证通过后允许开题 ESP32 → Mac Voice Bridge（R0 浏览器路径失败不阻塞）。
 
 ## 风险
 

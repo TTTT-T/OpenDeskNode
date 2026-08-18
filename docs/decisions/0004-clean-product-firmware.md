@@ -21,7 +21,7 @@ Phase 1B 已证明 Xiaozhi v2.4.2 可在目标板启动，并验证 RLCD、BOOT 
 - 正式产品只在独立 `firmware/product/` ESP-IDF 工程上发展。
 - 允许参考硬件参数、Waveshare 板级实现、ESP-IDF/Espressif 组件与已验证的底层驱动；每次迁移必须记录来源和依赖。
 - 不迁移 Xiaozhi Application、激活、OTA、业务协议、MCP 或云端 ASR/LLM/TTS。
-- 语音目标路径改为本地唤醒词、自有 Voice Gateway 和 OpenAI Realtime API，分阶段实现。
+- 语音目标路径改为本地唤醒词 + OpenAI Realtime；后端编排由 [ADR-0005](0005-openclaw-realtime-gateway-relay.md) 定为 OpenClaw Talk `gateway-relay` + EVA consult，不再自建 NAS Voice Gateway。
 
 ## 后果与风险
 
