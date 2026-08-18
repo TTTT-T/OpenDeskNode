@@ -31,18 +31,34 @@ PENDING（R0 执行时从 OpenClaw 导出实际生效配置，含版本与所在
 - 实际：PENDING（登录方式、账号类型、是否出现 key 要求、token 续期行为、
   headless 可行性观察）。
 
-## 3. R0 — Browser Realtime：PENDING
+## 3. R0 — Browser Realtime：FAIL（2026-08-18 19:48 首测，原因未定论）
 
 | 项 | 结果 | 备注 |
 | --- | --- | --- |
-| 前置（Gateway 运行 / Control UI / 麦克风权限） | PENDING | |
-| OAuth-only 会话建立（无 API key） | PENDING | |
-| 中文实时对话 ≥2 min / ≥5 轮连续 | PENDING | |
-| 首响应延迟 | PENDING | 秒表粗测 + 日志时间戳 |
-| 轮间延迟 | PENDING | |
-| Barge-in ≥3 次（成功次数） | PENDING | |
+| 前置（Gateway 运行 / Control UI / 麦克风权限） | PASS | Gateway 18789 running，探针 ok；Control UI webchat 连接正常 |
+| OAuth-only 会话建立（无 API key） | 部分 | OAuth profile `openai:terrencettt1996@gmail.com` (mode=oauth) 当日 08:22 授权成功；`talk.client.create` ✓（1193ms） |
+| WebRTC 建立 | **FAIL** | 浏览器 JS 报 `Realtime WebRTC setup failed (400)` |
+| 中文实时对话 / 延迟 / Barge-in | 未执行 | 阻塞于上一项 |
 
-错误与日志摘要：PENDING
+### 诊断记录（源码级，OpenClaw 2026.7.1-2）
+
+- 失败点：浏览器直接 POST `https://api.openai.com/v1/realtime/calls`（SDP
+  offer + Gateway 签发的 ephemeral clientSecret Bearer），OpenAI 返回 400。
+  该请求不经过 Gateway，故 Gateway 日志无任何报错（已核 19:48–19:55 窗口）。
+- 链路前段正常：`talk.client.create` ✓；OAuth 为 OpenClaw realtime 合法认证
+  （`PLATFORM_AUTH_PROFILE_TYPES = ["api_key", "oauth"]`），排除"必须 API
+  key"假设。
+- 主要疑点：`gpt-live-1-codex` 在 OpenClaw dist 中零出现（内置默认
+  `gpt-realtime-2.1`），自定义模型名随 session 下发，疑似 OpenAI 端拒绝。
+  400 响应体未捕获（仅存在于浏览器 Network 面板，未留存）。
+- 网络排除：Mac 直连 `api.openai.com` 正常（0.7 s）；Clash Verge 未运行与
+  此无关（chatgpt.com 403 为另一独立现象，不影响 api.openai.com）。
+
+### 处置决定（用户，2026-08-18）
+
+R0 webrtc 路径不是 ESP32 产品路径，直接转 R2（gateway-relay）。R0 记 FAIL
+（未定论），不静默跳过；若 R2 出现模型类错误，候选隔离步骤为临时换
+`gpt-realtime-2.1` 复测（待用户批准，不属于本阶段范围变更）。
 
 ## 4. R1 — Agent Consult：PENDING
 
