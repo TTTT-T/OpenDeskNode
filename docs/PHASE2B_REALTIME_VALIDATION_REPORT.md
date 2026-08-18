@@ -71,19 +71,27 @@ R0 webrtc 路径不是 ESP32 产品路径，直接转 R2（gateway-relay）。R0
 
 错误与日志摘要：PENDING
 
-## 5. R2 — Gateway Relay：PENDING
+## 5. R2 — Gateway Relay：FAIL（2026-08-18 20:23 首测，模型不支持）
 
-配置变更：`transport: webrtc → gateway-relay`（其余不变）。
+配置变更：`transport: webrtc → gateway-relay`（20:22:57 热重载生效，其余不变）。
 
 | 项 | 结果 | 备注 |
 | --- | --- | --- |
-| OAuth-only + gateway-relay 会话建立 | PENDING | 核心问题 |
-| 中文实时语音 / 连续对话 | PENDING | |
-| Barge-in | PENDING | |
-| agent-consult | PENDING | |
-| 延迟对比 vs webrtc | PENDING | |
+| transport 切换生效 | PASS | Gateway 日志 `config change detected (talk.realtime.transport)`；relay 模式正确要求 `talk.session.create`（UI 误发 `talk.client.create` 被引导纠正） |
+| OAuth-only 会话建立 | 强指示 PASS | 请求已通过认证到达 OpenAI 模型校验层（返回模型级 400 而非 401） |
+| GPT-Live session 建立 | **FAIL** | OpenAI 报错（UI 捕获）：`Model "gpt-live-1-codex" is not supported in realtime mode. See https://platform.openai.com/docs/models for a list of supported models.` |
+| 中文实时语音 / Barge-in / consult | 未执行 | 阻塞于上一项 |
 
-错误与日志摘要：PENDING
+### 诊断记录
+
+- 根因确认：`gpt-live-1-codex` 不在 OpenAI platform realtime 支持模型列表内
+  （该名称疑似 ChatGPT 消费端模型，未对 platform realtime API 开放）。
+- **R0 的 400 同根因**：浏览器路径丢失了响应体，R2 relay 路径拿回了完整错误。
+- 正面信号：OAuth-only（ChatGPT 登录、无 API key）已推进到模型校验层，
+  R2 核心问题（OAuth 能否建立 GPT-Live session）的障碍是模型可用性而非认证。
+- 下一步（预批准的隔离步骤）：`openclaw config set talk.realtime.model
+  gpt-realtime-2.1`（OpenClaw 内置默认 realtime 模型）复测 R2；若 OAuth
+  token 对该模型无权限（计费/访问差异），则 OAuth-only 结论需要修正。
 
 ## 6. 总结判定
 
