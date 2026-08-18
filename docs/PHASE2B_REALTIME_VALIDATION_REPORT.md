@@ -7,29 +7,32 @@
 
 ## 1. 实际使用的 OpenClaw Talk 配置
 
-PENDING（R0 执行时从 OpenClaw 导出实际生效配置，含版本与所在主机）。
-用户提供的初始配置（2026-08-18）：
+实际生效（2026-08-18 20:26 起，`~/.openclaw/openclaw.json`）：
 
 ```json
 {
   "provider": "openai",
-  "providers": {
-    "openai": {
-      "speakerVoice": "marin"
-    }
-  },
-  "model": "gpt-live-1-codex",
+  "model": "gpt-realtime-2.1",
   "mode": "realtime",
-  "transport": "webrtc",
-  "brain": "agent-consult"
+  "transport": "gateway-relay",
+  "brain": "agent-consult",
+  "providers": { "openai": { "speakerVoice": "marin" } }
 }
 ```
 
+变更史：用户初始配置 `model=gpt-live-1-codex, transport=webrtc`；R0 webrtc
+FAIL（400）→ R2 切 `gateway-relay` 后模型报错 → 隔离步骤换
+`gpt-realtime-2.1` 后 R2 核心验证通过。
+
 ## 2. ChatGPT OAuth 与 API key 使用情况
 
-- 计划：ChatGPT OAuth 登录；不使用 OpenAI Platform API key。
-- 实际：PENDING（登录方式、账号类型、是否出现 key 要求、token 续期行为、
-  headless 可行性观察）。
+- 认证 profile：`openai:terrencettt1996@gmail.com`（mode=oauth，2026-08-18
+  08:22 授权）。
+- **全程未使用 OpenAI Platform API key**；R2 成功 session 为 OAuth-only。
+- 源码确认 OAuth 是 OpenClaw realtime 合法平台认证
+  （`PLATFORM_AUTH_PROFILE_TYPES = ["api_key", "oauth"]`）。
+- 未验证项：OAuth token 对模型/用量的长期稳定性；headless（无浏览器）场景
+  的 token 维持方式（Bridge 阶段必须解决）。
 
 ## 3. R0 — Browser Realtime：FAIL（2026-08-18 19:48 首测，原因未定论）
 
@@ -71,27 +74,36 @@ R0 webrtc 路径不是 ESP32 产品路径，直接转 R2（gateway-relay）。R0
 
 错误与日志摘要：PENDING
 
-## 5. R2 — Gateway Relay：FAIL（2026-08-18 20:23 首测，模型不支持）
+## 5. R2 — Gateway Relay：核心验证 PASS（2026-08-18 20:26，gpt-realtime-2.1）
 
-配置变更：`transport: webrtc → gateway-relay`（20:22:57 热重载生效，其余不变）。
+配置变更：`transport: webrtc → gateway-relay`（20:22:57）；模型隔离步骤
+`model: gpt-live-1-codex → gpt-realtime-2.1`（20:26:03 热重载生效）。
 
 | 项 | 结果 | 备注 |
 | --- | --- | --- |
-| transport 切换生效 | PASS | Gateway 日志 `config change detected (talk.realtime.transport)`；relay 模式正确要求 `talk.session.create`（UI 误发 `talk.client.create` 被引导纠正） |
-| OAuth-only 会话建立 | 强指示 PASS | 请求已通过认证到达 OpenAI 模型校验层（返回模型级 400 而非 401） |
-| GPT-Live session 建立 | **FAIL** | OpenAI 报错（UI 捕获）：`Model "gpt-live-1-codex" is not supported in realtime mode. See https://platform.openai.com/docs/models for a list of supported models.` |
-| 中文实时语音 / Barge-in / consult | 未执行 | 阻塞于上一项 |
+| OAuth-only + gateway-relay 会话建立（核心问题） | **PASS** | `session.ready`（realtime / gateway-relay / agent-consult / openai），sessionId `d668a102…`；ChatGPT OAuth、全程无 API key |
+| 中文实时语音对话 | **PASS** | 用户确认测试通过；日志 20:26:36–20:26:52 多轮 `transcript.done`/`output.audio.done`/`output.text.done` |
+| Barge-in | **PASS（≥1 次，日志证实）** | 20:26:46 `turn.cancelled`（talkFinal）后同 session 立即新 `turn.started`——播放中插话取消输出并开始新 turn |
+| 会话正常关闭 | PASS | `session.closed`（talkFinal） |
+| agent-consult 实际调用 EVA | 待 R1 显式验证 | brain=agent-consult 已在 session 参数中激活，但未做 memory/tool 交叉验证 |
+| 延迟对比 vs webrtc | 未测（webrtc 路径未通过） | 主观体感待用户补充；后续可用日志时间戳量化 |
 
-### 诊断记录
+### 首测 FAIL 记录（20:23，保留为隔离证据）
 
-- 根因确认：`gpt-live-1-codex` 不在 OpenAI platform realtime 支持模型列表内
-  （该名称疑似 ChatGPT 消费端模型，未对 platform realtime API 开放）。
-- **R0 的 400 同根因**：浏览器路径丢失了响应体，R2 relay 路径拿回了完整错误。
-- 正面信号：OAuth-only（ChatGPT 登录、无 API key）已推进到模型校验层，
-  R2 核心问题（OAuth 能否建立 GPT-Live session）的障碍是模型可用性而非认证。
-- 下一步（预批准的隔离步骤）：`openclaw config set talk.realtime.model
-  gpt-realtime-2.1`（OpenClaw 内置默认 realtime 模型）复测 R2；若 OAuth
-  token 对该模型无权限（计费/访问差异），则 OAuth-only 结论需要修正。
+`gpt-live-1-codex` 被OpenAI 拒绝：`Model "gpt-live-1-codex" is not supported in
+realtime mode`。根因：该模型不在 platform realtime 支持列表（疑似 ChatGPT
+消费端模型）。换 `gpt-realtime-2.1`（OpenClaw 内置默认）后即通——同时反推
+R0 浏览器 webrtc 的 400 同根因。
+
+### 关键架构结论
+
+1. **R2 核心问题得到肯定答案**：ChatGPT OAuth-only 可以经 gateway-relay 建立
+   realtime 语音 session，无需 OpenAI Platform API key。ESP32 Voice Bridge
+   的传输前提成立。
+2. **实际可用模型是 `gpt-realtime-2.1`**，不是 `gpt-live-1-codex`。架构图与
+   文档中的"GPT-Live / gpt-live-1-codex"表述需统一修正。
+3. OpenClaw relay 路径的服务端错误可完整落日志（对比浏览器路径 400 丢细节），
+   适合作为 Bridge 的下游。
 
 ## 6. 总结判定
 
