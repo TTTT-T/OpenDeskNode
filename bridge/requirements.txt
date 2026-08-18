@@ -1,0 +1,2 @@
+# Live Talk client only. Host C0 tests use the existing FastAPI/numpy set.
+websockets==14.2

@@ -143,7 +143,10 @@ queue depth、underrun/overrun。
 ## 实现顺序（本开题之后）
 
 1. 冻结协议草案与音频合同（本文 + VOICE_BRIDGE_PROTOCOL）。
-2. C0：Mac 上最小 Bridge skeleton + host fixture。
+2. C0 host：`bridge/` skeleton + FakeTalk fixture 已实现（`bash scripts/verify-phase-2c.sh`）。
+   对真实 OpenClaw Talk 的 C0 仍待本机实测；Gateway token 在 keychain
+   SecretRef 中，Bridge 只接受 `EVA_VOICE_BRIDGE_GATEWAY_TOKEN` / 明文
+   `gateway.auth.token`，不把凭据写入仓库。
 3. C1/C2：ESP32 transport 增量接入 2A 音频。
 4. C3/C4/C5。
 5. Wake PoC 不阻塞；做不完拆 Phase 2C.x。
