@@ -1,7 +1,7 @@
 # PHASE2B — OpenClaw GPT-Live Realtime Architecture Validation Report
 
-状态：**DRAFT — R0/R1/R2 待执行**（模板先行；每项验证完成后回填，全部完成后
-定稿并在 PROJECT_STATE 记录结论）。
+状态：**Software Complete**（2026-08-18）。产品主链 R1/R2 PASS；R0 浏览器
+WebRTC FAIL（同模型问题，非产品路径）。
 分支：`phase-2b-realtime`；开题：2026-08-18。
 阶段定义：[PHASE2B_GPT_LIVE_REALTIME_VALIDATION.md](PHASE2B_GPT_LIVE_REALTIME_VALIDATION.md)。
 
@@ -71,7 +71,7 @@ session `30d93db0-da54-49f5-952d-2328c1da2f97`（gateway-relay / agent-consult�
 | --- | --- | --- |
 | consult 调用真实 EVA agent | **PASS** | 日志 `lane=session:agent:eva:main`；`runId=talk-call_TXlwVWfxNt6TpTTy-…` |
 | durable memory 写入 | **PASS** | `workspace-eva/MEMORY.md` 20:43:02 写入「备用2号 = 蓝鲸7号」 |
-| 跨渠道读回（Telegram 问暗号） | 待用户执行 | 写已证实；读回是剩余人工项 |
+| 跨渠道读回（Telegram 问暗号） | **PASS** | 用户确认；日志 20:55:18 inbound → 20:56:15 `telegram outbound send ok accountId=eva` messageId=1805 |
 | tool 调用 | **PASS** | 多次 `tool.call`→`tool.result`；`exec.approval.waitDecision` + `resolve`；Telegram 出站 7612/7613 |
 | EVA 主模型 | 降级成功 | `zai/glm-5.2` 返回 `401 令牌已过期`；failover 到 `deepseek-v4-flash` 后 `candidate_succeeded` |
 | 浏览器声学 | **已知缺陷** | 扬声器回灌麦克风 → 自打断循环（20:43:15–20:43:46 密集 transcript/output 循环）；浏览器路径无硬件 AEC |
@@ -115,22 +115,27 @@ R0 浏览器 webrtc 的 400 同根因。
 
 ## 6. 总结判定
 
-- R0：PENDING；R1：PENDING；R2：PENDING。
-- 是否允许进入 ESP32 → Mac Voice Bridge 接口设计：PENDING（需三项全 PASS）。
-- 结论与下一步架构决策：PENDING。
+- R0 浏览器 WebRTC：**FAIL**（`gpt-live-1-codex` 不支持 realtime；非产品路径）。
+- R1 Agent Consult：**PASS**（consult EVA、记忆写入+Telegram 读回、tool 执行）。
+- R2 Gateway Relay：**PASS**（OAuth-only + `gpt-realtime-2.1` + barge-in 实证）。
+- **允许进入 ESP32 → Mac Voice Bridge 接口设计。** 产品主链已验证；R0 失败
+  不阻塞（ESP32 不会走浏览器 WebRTC）。
+- 架构修正：正式 realtime 模型写 `gpt-realtime-2.1`，不再使用
+  `gpt-live-1-codex`。OpenClaw Gateway 实测在 Mac mini（loopback 18789），
+  不是 NAS。
 
-## 7. ESP32 Voice Bridge 下一阶段接口建议（R2 后填写）
+## 7. ESP32 Voice Bridge 下一阶段接口建议
 
-待验证后填写。开题时列出的候选要点（非结论）：
+已验证前提：Mac 上 OpenClaw Gateway + Talk `gateway-relay` + OAuth-only +
+`gpt-realtime-2.1` + `brain=agent-consult` 可建立实时语音并调用 EVA。
 
-- 传输：优先评估 `gateway-relay`（WebRTC 栈对 ESP32 过重）；R2 结论是关键
-  输入。
-- Bridge 职责边界：终结 ESP32 PCM（16 kHz/16-bit/mono）链路 ↔ OpenClaw
-  Talk/Gateway 协议翻译；不做 STT/TTS/推理/agent 语义。
-- ESP32 侧保留：WakeNet “你好 EVA”（模型待获取/训练）、VAD、AEC、本地
-  barge-in 停播、Phase 2A 冻结音频基线。
-- 待解决问题：headless bridge 的 OAuth 会话维持；GPT-Live 下行音频重采样
-  至 16 kHz；会话映射与设备身份；LAN 发现与配置。
-- 旧实验资产参考：`phase-2b-r` 分支的 VOICE_PROTOCOL v2（conversation/turn
-  语义、barge-in 本地停播、有界缓冲）可作 Bridge 设备侧协议设计参考；未
-  合并，按需评估。
+- **传输**：Bridge 对接 OpenClaw Talk `gateway-relay`（`talk.session.create`），
+  不实现 WebRTC。ESP32 ↔ Bridge 用稳定 PCM 设备协议（可参考 `phase-2b-r`
+  的 v2 conversation/turn，不合并不照搬）。
+- **Bridge 职责**：PCM 16 kHz/16-bit/mono ↔ OpenClaw Talk 音频/事件翻译；
+  session 映射；健康检查。不做 STT/TTS/推理/agent。
+- **ESP32 侧必须保留**：Phase 2A AEC（浏览器测试已证明无硬件 AEC 会自打断）、
+  本地 barge-in 停播、VAD、唤醒「你好 EVA」（模型待获取）。
+- **待独立解决**：headless OAuth 续期（浏览器登录无法下沉到 Bridge 进程）；
+  下行重采样到 16 kHz；设备身份；LAN 发现。EVA 主模型 zai token 过期是运维项，
+  不进固件。

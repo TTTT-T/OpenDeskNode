@@ -7,15 +7,16 @@
 ## 当前 Phase
 
 **[Phase 2B — OpenClaw GPT-Live Realtime Architecture Validation]
-(PHASE2B_GPT_LIVE_REALTIME_VALIDATION.md)** — 进行中（R0/R1/R2 待执行；
-结果回填 [PHASE2B_REALTIME_VALIDATION_REPORT.md](PHASE2B_REALTIME_VALIDATION_REPORT.md)
-（DRAFT））。
+(PHASE2B_GPT_LIVE_REALTIME_VALIDATION.md)** — Software Complete
+（[报告](PHASE2B_REALTIME_VALIDATION_REPORT.md)）。产品主链 R1/R2 PASS；
+R0 浏览器 WebRTC FAIL（模型不支持，非产品路径）。允许进入 ESP32 Voice
+Bridge 接口设计。
 
 2026-08-18 用户冻结新的语音架构方向并暂停旧路线：
 
 - 新主链：ESP32（音频边缘：双麦/AEC/VAD/本地唤醒“你好 EVA”/ES8311/PCM）→
   Mac mini **EVA Voice Bridge**（薄桥）→ NAS **OpenClaw Gateway** →
-  **GPT-Live `gpt-live-1-codex`**（实时听说/VAD/连续对话/打断）→
+  **OpenAI Realtime `gpt-realtime-2.1`**（实时听说/VAD/连续对话/打断）→
   `openclaw_agent_consult` → **OpenClaw EVA Agent**（memory/tools/HA/日历/自动化）。
 - ESP32 不承担 STT/TTS/LLM/Agent；一切基于 “STT → OpenClaw → TTS” 的旧开发
   停止。R0–R2 全部 PASS 前禁止：自建 streaming STT/TTS、Whisper 主链、旧
@@ -174,22 +175,20 @@ easyquotation/Tencent 和 Baidu direct 做真实、低频、短连续调用，�
 
 ## 下一步
 
-1. 用户执行 R0（浏览器 ChatGPT OAuth + `gpt-live-1-codex` + webrtc 中文实时
-   语音/延迟/barge-in）→ 回填报告。
-2. R1（agent consult / memory 跨渠道 / tool 调用）→ R2（transport 改
-   `gateway-relay` 复验，重点 OAuth-only 会话建立）。
-3. 三项全 PASS：报告定稿 + 新 ADR（处理 ADR-0006 AI 路线替代）+ ESP32 →
-   Mac Voice Bridge 接口设计开题。任一 FAIL：记录证据，回到架构决策，
-   不绕过、不扩大范围。
+1. 新 ADR：正式替代 ADR-0006 的「Mac 本地 ASR/LLM/TTS」路线；模型写
+   `gpt-realtime-2.1`，传输写 `gateway-relay`，OpenClaw Gateway 在 Mac mini。
+2. 下一阶段开题：ESP32 → Mac EVA Voice Bridge 接口设计（禁止清单仍有效：
+   不自建 STT/TTS、不直连 OpenAI、不把 OpenClaw 协议下沉到 ESP32）。
+3. 运维项（不进固件）：EVA 主模型 zai token 过期；headless OAuth 续期方案。
 4. 旧遗留补测项保留：下一交易时段 Gateway quote/分钟实时推进；2A 遗留
    WAV 协议限速、AEC 模式对比等（见 PHASE2A_REPORT 已知问题节）。
 
 ## 重要风险与未验证
 
-- Realtime 主链（2026-08-18 方向）全部未验证：ChatGPT OAuth-only 能否驱动
-  GPT-Live（尤其 `gateway-relay`）是 R2 核心问题；无 key 限流未知；headless
-  Bridge 的 OAuth 会话维持未验证；GPT-Live 下行音频对 ESP32 16 kHz 链路的
-  适配未验证。见阶段定义"风险"节。
+- Realtime 产品主链已验证（OAuth-only + gateway-relay + gpt-realtime-2.1 +
+  agent-consult）。未验证：headless OAuth 续期、下行音频重采样到 16 kHz、
+  浏览器外放自打断在 ESP32 AEC 下的消除（2A 硬件 AEC 是设计依据）。
+  `gpt-live-1-codex` 已证实不可用于 platform realtime。
 - 2A 遗留：串口 WAV 协议在 >16 kHz/更多通道时需重新限速评估；AEC 仅验
   证 VOIP_HIGH_PERF 模式；音量 0 对照实验 inconclusive（底噪主导，不用
   作证据）。详见 [PHASE2A_REPORT.md](PHASE2A_REPORT.md) 已知问题节。
