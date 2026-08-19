@@ -1,10 +1,11 @@
+import json
 import unittest
 
 from bridge.audio import TALK_HZ
 from bridge.config import BridgeConfig
 from bridge.protocol import FRAME_BYTES, PROTOCOL_VERSION, pack_audio_frame
 from bridge.session import DeviceSession
-from bridge.talk import FakeTalkClient
+from bridge.talk import FakeTalkClient, GatewayTalkClient
 
 
 def hello():
@@ -73,6 +74,128 @@ class C1ProtocolTests(unittest.IsolatedAsyncioTestCase):
         before = self.session.metrics["dropped_old"]
         await self.session.handle_binary(b"\xa5" + b"\x00" * 20)
         self.assertEqual(self.session.metrics["dropped_old"], before + 1)
+
+    async def test_session_scoped_user_transcripts(self):
+        sid = self.session.talk_session_id
+        event = {
+            "type": "transcript",
+            "sessionId": sid,
+            "talkEvent": {"type": "transcript.done", "transcript": "你好 EVA"},
+        }
+        await self.session.on_talk_event(event)
+        self.assertEqual(len(self.session.metrics["user_transcripts"]), 1)
+        final = self.session.metrics["last_user_transcript"]
+        self.assertEqual(final["text"], "你好 EVA")
+        self.assertEqual(final["talkType"], "transcript.done")
+
+        delta = {
+            "type": "transcript",
+            "sessionId": sid,
+            "talkEvent": {"type": "transcript.delta", "transcript": "你"},
+        }
+        await self.session.on_talk_event(delta)
+        self.assertEqual(len(self.session.metrics["user_transcripts"]), 2)
+        self.assertEqual(self.session.metrics["last_user_transcript"]["text"], "你好 EVA")
+
+        other = {
+            "type": "transcript",
+            "sessionId": "talk-somewhere-else",
+            "talkEvent": {"type": "transcript.done", "transcript": "别的会话"},
+        }
+        await self.session.on_talk_event(other)
+        self.assertEqual(len(self.session.metrics["user_transcripts"]), 2)
+
+        assistant = {
+            "type": "text",
+            "sessionId": sid,
+            "talkEvent": {"type": "output.text.delta", "text": "EVA 回复"},
+        }
+        await self.session.on_talk_event(assistant)
+        self.assertEqual(len(self.session.metrics["user_transcripts"]), 2)
+
+
+class GatewayTalkStatsTests(unittest.TestCase):
+    def _client(self):
+        return GatewayTalkClient("ws://127.0.0.1:18789", "token")
+
+    def test_transcript_entries_carry_session_eventseq_ts(self):
+        client = self._client()
+        client._collect_text(
+            {"text": "你好 EVA", "sessionId": "talk-live-1"},
+            "transcript.done",
+            7,
+            1700000000.0,
+        )
+        client._collect_text(
+            {"text": "assistant says", "sessionId": "talk-live-1"},
+            "output.text.done",
+            8,
+            1700000001.0,
+        )
+        self.assertEqual(len(client.stats["transcripts"]), 1)
+        self.assertEqual(len(client.stats["texts"]), 1)
+        entry = client.stats["transcripts"][0]
+        self.assertEqual(entry["text"], "你好 EVA")
+        self.assertEqual(entry["sessionId"], "talk-live-1")
+        self.assertEqual(entry["eventSeq"], 7)
+        self.assertEqual(entry["ts"], 1700000000.0)
+        self.assertEqual(entry["talkType"], "transcript.done")
+
+    def test_next_event_is_monotonic(self):
+        client = self._client()
+        first = client._next_event()
+        second = client._next_event()
+        self.assertEqual(first[0], 1)
+        self.assertEqual(second[0], 2)
+        self.assertGreaterEqual(second[1], first[1])
+        self.assertEqual(client.stats["events"], 2)
+
+
+class _FakeWS:
+    def __init__(self, messages):
+        self._messages = messages
+
+    def __aiter__(self):
+        return self._agen()
+
+    async def _agen(self):
+        for message in self._messages:
+            yield json.dumps(message)
+
+    async def close(self):
+        return None
+
+
+class TalkReaderSurvivalTests(unittest.IsolatedAsyncioTestCase):
+    async def test_read_loop_survives_listener_failure(self):
+        # A device WS dying mid-downlink must not kill the shared Talk reader.
+        client = GatewayTalkClient("ws://127.0.0.1:18789", "token")
+        client._connected = True
+        seen = []
+
+        async def listener(payload):
+            seen.append(payload.get("type"))
+            if payload.get("type") == "boom":
+                raise RuntimeError("device websocket gone")
+
+        client.set_listener(listener)
+        client._ws = _FakeWS(
+            [
+                {
+                    "type": "event",
+                    "event": "talk.event",
+                    "payload": {"type": "boom", "sessionId": "s1"},
+                },
+                {
+                    "type": "event",
+                    "event": "talk.event",
+                    "payload": {"type": "still-drained", "sessionId": "s1"},
+                },
+            ]
+        )
+        await client._read_loop()
+        self.assertEqual(seen, ["boom", "still-drained"])
+        self.assertTrue(client.connected)
 
 
 class C1ConfigTests(unittest.TestCase):

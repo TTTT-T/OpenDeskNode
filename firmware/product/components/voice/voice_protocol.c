@@ -71,8 +71,11 @@ int voice_txq_push(voice_txq_t *q, const uint8_t *frame)
     const uint16_t tail = (uint16_t)((q->head + q->count) % VOICE_TXQ_FRAMES);
     memcpy(q->frames[tail], frame, VOICE_WIRE_BYTES);
     q->count++;
+    if (q->count > q->peak_count) {
+        q->peak_count = q->count;
+    }
     q->pushed++;
-    return q->dropped_total >= VOICE_TXQ_DROP_LIMIT ? -2 : 0;
+    return q->dropped >= VOICE_TXQ_DROP_LIMIT ? -2 : 0;
 }
 
 int voice_txq_pop(voice_txq_t *q, uint8_t *frame)
@@ -94,6 +97,7 @@ void voice_txq_clear(voice_txq_t *q)
     }
     q->head = 0;
     q->count = 0;
+    q->dropped = 0;
 }
 
 int voice_txq_count(const voice_txq_t *q)

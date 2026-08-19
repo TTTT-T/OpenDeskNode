@@ -61,6 +61,11 @@ class DeviceSession:
             "seq_reorder": 0,
             "commit_silence_bytes": 0,
             "uplink_peak": 0,
+            # Session-scoped Realtime user transcripts (talk transcript.* events
+            # that passed the sessionId filter); each entry is
+            # {"text", "talkType", "ts"}.
+            "user_transcripts": [],
+            "last_user_transcript": None,
         }
         self._uplink_pcm = bytearray()
         self._up = upsample_16k_to_24k()
@@ -162,6 +167,18 @@ class DeviceSession:
                 timestamp=parsed["ts_ms"] / 1000.0,
             )
 
+    @staticmethod
+    def _text_of(event: dict[str, Any], talk_event: dict[str, Any]) -> Optional[str]:
+        for candidate in (
+            event.get("text"),
+            event.get("transcript"),
+            talk_event.get("text"),
+            talk_event.get("transcript"),
+        ):
+            if isinstance(candidate, str) and candidate.strip():
+                return candidate.strip()
+        return None
+
     async def on_talk_event(self, event: dict[str, Any]) -> None:
         if not self.talk_session_id:
             return
@@ -171,6 +188,13 @@ class DeviceSession:
         kind = event.get("type")
         talk_event = event.get("talkEvent") or {}
         talk_type = talk_event.get("type")
+        if isinstance(talk_type, str) and "transcript" in talk_type:
+            text = self._text_of(event, talk_event)
+            if text:
+                entry = {"text": text, "talkType": talk_type, "ts": time.time()}
+                self.metrics["user_transcripts"].append(entry)
+                if talk_type.endswith("done"):
+                    self.metrics["last_user_transcript"] = entry
         if kind in {"audio", "audioDelta"} or talk_type == "output.audio.delta":
             raw = event.get("audioBase64")
             if not raw:

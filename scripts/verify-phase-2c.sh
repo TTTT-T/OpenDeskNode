@@ -53,9 +53,16 @@ else
   exit 1
 fi
 
+if rg -n '192\.168\.|10\.0\.[0-9]+\.|172\.(1[6-9]|2[0-9]|3[01])\.' \
+  "$ROOT_DIR/firmware/product/sdkconfig.defaults" \
+  "$ROOT_DIR/firmware/product/components/voice/Kconfig"; then
+  echo "Tracked firmware config must not embed site-specific LAN addresses" >&2
+  exit 1
+fi
+
 PYTHONPYCACHEPREFIX="$PYTHON_CACHE" "$PYTHON_BIN" -m unittest \
   tests.test_bridge_protocol tests.test_bridge_audio tests.test_bridge_c0 \
-  tests.test_bridge_config tests.test_bridge_c1 -v
+  tests.test_bridge_config tests.test_bridge_c1 tests.test_c1_live_watcher -v
 PYTHONPYCACHEPREFIX="$PYTHON_CACHE" "$PYTHON_BIN" -m py_compile \
   bridge/__init__.py bridge/protocol.py bridge/audio.py bridge/config.py \
   bridge/talk.py bridge/session.py bridge/app.py bridge/__main__.py \

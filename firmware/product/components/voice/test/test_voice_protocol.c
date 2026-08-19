@@ -65,11 +65,49 @@ static void test_queue_drop_limit(void)
     voice_txq_init(&q);
     uint8_t frame[VOICE_WIRE_BYTES] = { 0 };
     int rc = 0;
+    for (int i = 0; i < VOICE_TXQ_FRAMES + VOICE_TXQ_DROP_LIMIT - 1; i++) {
+        rc = voice_txq_push(&q, frame);
+    }
+    CHECK_TRUE(rc == 0);
+    rc = voice_txq_push(&q, frame);
+    CHECK_TRUE(rc == -2);
+    CHECK_TRUE(q.dropped == VOICE_TXQ_DROP_LIMIT);
+    CHECK_TRUE(q.dropped_total >= VOICE_TXQ_DROP_LIMIT);
+    CHECK_TRUE(VOICE_TXQ_DROP_LIMIT * VOICE_FRAME_MS == 1500);
+}
+
+/* A drop-heavy utterance must not poison any later utterance: the transport
+ * error threshold is per congestion window, not per lifetime. */
+static void test_drop_window_resets_between_utterances(void)
+{
+    voice_txq_t q;
+    voice_txq_init(&q);
+    uint8_t frame[VOICE_WIRE_BYTES] = { 0 };
+    int rc = 0;
     for (int i = 0; i < VOICE_TXQ_FRAMES + VOICE_TXQ_DROP_LIMIT; i++) {
         rc = voice_txq_push(&q, frame);
     }
     CHECK_TRUE(rc == -2);
-    CHECK_TRUE(q.dropped_total >= VOICE_TXQ_DROP_LIMIT);
+    CHECK_TRUE(q.dropped >= VOICE_TXQ_DROP_LIMIT);
+    const uint32_t total_first = q.dropped_total;
+
+    voice_txq_clear(&q);
+    CHECK_TRUE(q.dropped == 0);
+    CHECK_TRUE(q.dropped_total == total_first);
+    CHECK_TRUE(voice_txq_count(&q) == 0);
+
+    for (int i = 0; i < VOICE_TXQ_FRAMES + 3; i++) {
+        rc = voice_txq_push(&q, frame);
+    }
+    CHECK_TRUE(rc == 0);
+    CHECK_TRUE(q.dropped == 3);
+    CHECK_TRUE(q.dropped_total >= total_first + 3);
+
+    voice_txq_clear(&q);
+    for (int i = 0; i < VOICE_TXQ_FRAMES + VOICE_TXQ_DROP_LIMIT; i++) {
+        rc = voice_txq_push(&q, frame);
+    }
+    CHECK_TRUE(rc == -2);
 }
 
 static void test_hello_json(void)
@@ -87,6 +125,7 @@ int main(void)
     test_rejects_short_frame();
     test_queue_drop_oldest();
     test_queue_drop_limit();
+    test_drop_window_resets_between_utterances();
     test_hello_json();
     if (failures) {
         printf("VOICE_PROTOCOL_HOST_TESTS_FAILED %d\n", failures);

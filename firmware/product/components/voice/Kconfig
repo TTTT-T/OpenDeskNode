@@ -2,9 +2,12 @@ menu "EVA Voice Bridge client"
 
 config VOICE_BRIDGE_URI
     string "EVA Voice Bridge WebSocket URI"
-    default "ws://192.168.31.172:8090/voice/v0"
+    default "ws://eva-bridge.local:8090/voice/v0"
     help
-        LAN-only Voice Bridge endpoint. Do not put tokens or OpenClaw URLs here.
+        LAN-only Voice Bridge endpoint. The default is a portable mDNS-style
+        placeholder: set the real site value (stable hostname preferred over
+        LAN IP) in the local gitignored sdkconfig, never in this file. Do not
+        put tokens or OpenClaw URLs here.
 
 config VOICE_DEVICE_ID
     string "Device id sent in hello"

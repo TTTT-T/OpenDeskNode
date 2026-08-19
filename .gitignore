@@ -19,3 +19,6 @@ data/stock-gateway/
 # macOS and editor state
 .DS_Store
 .vscode/settings.json
+
+# Local bridge launcher (real LAN bind address; portable default stays in git)
+scripts/run-bridge-local.sh

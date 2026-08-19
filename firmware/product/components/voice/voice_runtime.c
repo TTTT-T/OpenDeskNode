@@ -59,18 +59,25 @@ static void log_metrics(const char *label)
     const size_t ps_free = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
     int qdepth = 0;
     uint32_t dropped = 0;
+    uint32_t dropped_total = 0;
+    uint32_t qpeak = 0;
     if (xSemaphoreTake(s_rt.mu, pdMS_TO_TICKS(20)) == pdTRUE) {
         qdepth = voice_txq_count(s_rt.txq);
-        dropped = s_rt.txq != NULL ? s_rt.txq->dropped : 0;
+        if (s_rt.txq != NULL) {
+            dropped = s_rt.txq->dropped;
+            dropped_total = s_rt.txq->dropped_total;
+            qpeak = s_rt.txq->peak_count;
+        }
         xSemaphoreGive(s_rt.mu);
     }
     printf("PHASE2C_C1 %s conn=%d hello=%d cid=%lu frames=%lu bytes=%lu drop=%lu "
-           "q=%d heap=%u psram=%u\n",
+           "drop_total=%lu q=%d qpeak=%lu heap=%u psram=%u\n",
            label,
            s_rt.ws != NULL && esp_websocket_client_is_connected(s_rt.ws),
            s_rt.helloed, (unsigned long)s_rt.conversation_id,
            (unsigned long)s_rt.frames_sent, (unsigned long)s_rt.bytes_sent,
-           (unsigned long)dropped, qdepth, (unsigned)internal.total_free_bytes,
+           (unsigned long)dropped, (unsigned long)dropped_total, qdepth,
+           (unsigned long)qpeak, (unsigned)internal.total_free_bytes,
            (unsigned)ps_free);
     fflush(stdout);
 }
@@ -257,9 +264,6 @@ static bool run_utterance(void)
     }
     if (xSemaphoreTake(s_rt.mu, pdMS_TO_TICKS(50)) == pdTRUE) {
         voice_txq_clear(s_rt.txq);
-        if (s_rt.txq != NULL) {
-            s_rt.txq->dropped = 0;
-        }
         xSemaphoreGive(s_rt.mu);
     }
     s_rt.seq = 0;
@@ -291,10 +295,13 @@ static bool run_utterance(void)
     voice_control_json(msg, sizeof(msg), "speech_end", s_rt.conversation_id, NULL);
     send_text(msg);
     const int64_t now = esp_timer_get_time();
-    printf("PHASE2C_C1 talk_done cid=%lu frames=%lu bytes=%lu drop=%lu "
-           "open_to_first_ms=%ld capture_ms=%ld\n",
+    printf("PHASE2C_C1 talk_done cid=%lu frames=%lu bytes=%lu drop=%lu drop_total=%lu "
+           "qpeak=%lu open_to_first_ms=%ld capture_ms=%ld\n",
            (unsigned long)s_rt.conversation_id, (unsigned long)s_rt.frames_sent,
-           (unsigned long)s_rt.bytes_sent,            (unsigned long)(s_rt.txq != NULL ? s_rt.txq->dropped : 0),
+           (unsigned long)s_rt.bytes_sent,
+           (unsigned long)(s_rt.txq != NULL ? s_rt.txq->dropped : 0),
+           (unsigned long)(s_rt.txq != NULL ? s_rt.txq->dropped_total : 0),
+           (unsigned long)(s_rt.txq != NULL ? s_rt.txq->peak_count : 0),
            s_rt.first_frame_us > 0
                ? (long)((s_rt.first_frame_us - s_rt.speech_start_us) / 1000)
                : -1,
@@ -337,6 +344,36 @@ static void teardown_audio_path(aec_handle_t **aec)
     }
 }
 
+/* Owns the audio path or returns false with the owner, the AEC and every
+ * hardware resource released; callers retry without holding AUDIO_OWNER_VOICE. */
+static bool establish_audio_path(aec_handle_t **aec)
+{
+    if (audio_owner_acquire(AUDIO_OWNER_VOICE, portMAX_DELAY) != ESP_OK) {
+        return false;
+    }
+    if (setup_audio_path(aec) == ESP_OK) {
+        return true;
+    }
+    ESP_LOGE(TAG, "audio path setup failed; releasing owner");
+    teardown_audio_path(aec);
+    audio_owner_release(AUDIO_OWNER_VOICE);
+    return false;
+}
+
+static void release_audio_path(aec_handle_t **aec)
+{
+    teardown_audio_path(aec);
+    audio_owner_release(AUDIO_OWNER_VOICE);
+}
+
+static void free_audio_buffers(int16_t *buffers[], int n)
+{
+    for (int i = 0; i < n; i++) {
+        heap_caps_free(buffers[i]);
+        buffers[i] = NULL;
+    }
+}
+
 static void audio_task(void *arg)
 {
     (void)arg;
@@ -351,43 +388,49 @@ static void audio_task(void *arg)
     }
     aec_handle_t *aec = NULL;
     if (setup_audio_path(&aec) != ESP_OK) {
-        audio_owner_release(AUDIO_OWNER_VOICE);
+        release_audio_path(&aec);
         vTaskDelete(NULL);
         return;
     }
+    /* Buffers are sized for the largest chunk a re-created AEC may report so
+     * yield/re-acquire cycles never need reallocation. */
+    const size_t buf_samples = 1024;
+    int16_t *buffers[5] = { 0 };
+    for (int i = 0; i < 4; i++) {
+        buffers[i] = heap_caps_malloc(buf_samples * sizeof(int16_t), MALLOC_CAP_INTERNAL);
+    }
+    buffers[4] = heap_caps_calloc(buf_samples, sizeof(int16_t), MALLOC_CAP_INTERNAL);
+    if (buffers[0] == NULL || buffers[1] == NULL || buffers[2] == NULL ||
+        buffers[3] == NULL || buffers[4] == NULL) {
+        ESP_LOGE(TAG, "audio buffers missing");
+        free_audio_buffers(buffers, 5);
+        release_audio_path(&aec);
+        vTaskDelete(NULL);
+        return;
+    }
+    int16_t *mic0 = buffers[0];
+    int16_t *ref = buffers[1];
+    int16_t *mic1 = buffers[2];
+    int16_t *out = buffers[3];
+    int16_t *silence = buffers[4];
     int chunk = aec_get_chunksize(aec);
-    if (chunk <= 0 || chunk > 1024) {
+    if (chunk <= 0 || chunk > (int)buf_samples) {
         chunk = 256;
     }
-    int16_t *mic0 = heap_caps_malloc((size_t)chunk * sizeof(int16_t), MALLOC_CAP_INTERNAL);
-    int16_t *ref = heap_caps_malloc((size_t)chunk * sizeof(int16_t), MALLOC_CAP_INTERNAL);
-    int16_t *mic1 = heap_caps_malloc((size_t)chunk * sizeof(int16_t), MALLOC_CAP_INTERNAL);
-    int16_t *out = heap_caps_malloc((size_t)chunk * sizeof(int16_t), MALLOC_CAP_INTERNAL);
-    int16_t *silence = heap_caps_calloc((size_t)chunk, sizeof(int16_t), MALLOC_CAP_INTERNAL);
     int16_t acc[VOICE_SAMPLES_PER_FRAME];
     int acc_n = 0;
     uint8_t wire[VOICE_WIRE_BYTES];
     TickType_t last_log = xTaskGetTickCount();
-    if (!mic0 || !ref || !mic1 || !out || !silence) {
-        ESP_LOGE(TAG, "audio buffers missing");
-        vTaskDelete(NULL);
-        return;
-    }
     log_metrics("audio_ready");
     while (true) {
         if (audio_owner_should_yield(AUDIO_OWNER_VOICE)) {
             s_rt.speaking = false;
-            teardown_audio_path(&aec);
-            audio_owner_release(AUDIO_OWNER_VOICE);
-            while (audio_owner_acquire(AUDIO_OWNER_VOICE, pdMS_TO_TICKS(200)) != ESP_OK) {
-                vTaskDelay(pdMS_TO_TICKS(50));
-            }
-            if (setup_audio_path(&aec) != ESP_OK) {
+            release_audio_path(&aec);
+            while (!establish_audio_path(&aec)) {
                 vTaskDelay(pdMS_TO_TICKS(500));
-                continue;
             }
             chunk = aec_get_chunksize(aec);
-            if (chunk <= 0 || chunk > 1024) {
+            if (chunk <= 0 || chunk > (int)buf_samples) {
                 chunk = 256;
             }
             acc_n = 0;
@@ -412,7 +455,8 @@ static void audio_task(void *arg)
                             xSemaphoreGive(s_rt.mu);
                             if (rc == -2) {
                                 s_rt.speaking = false;
-                                printf("PHASE2C_C1 transport_error drop=%lu\n",
+                                printf("PHASE2C_C1 transport_error drop=%lu drop_total=%lu\n",
+                                       (unsigned long)s_rt.txq->dropped,
                                        (unsigned long)s_rt.txq->dropped_total);
                                 fflush(stdout);
                             }

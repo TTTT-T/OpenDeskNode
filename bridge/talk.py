@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 import uuid
 from typing import Any, Awaitable, Callable, Optional, Protocol
 
@@ -149,11 +150,16 @@ class GatewayTalkClient:
         self._connected = False
         self.stats = {
             "events": 0,
+            # Monotonic per-connection counter; consumers correlate "new"
+            # evidence only as entries whose eventSeq exceeds their baseline.
+            "event_seq": 0,
+            "last_event_ts": None,
             "event_names": [],
             "payload_types": [],
             "talk_event_types": [],
             "append_ok": 0,
             "append_fail": 0,
+            # Entries: {"text", "sessionId", "talkType", "eventSeq", "ts"}.
             "transcripts": [],
             "texts": [],
         }
@@ -296,7 +302,20 @@ class GatewayTalkClient:
     async def close_session(self, session_id: str) -> None:
         await self._request("talk.session.close", {"sessionId": session_id})
 
-    def _collect_text(self, payload: dict[str, Any], talk_type: Optional[str]) -> None:
+    def _next_event(self) -> tuple[int, float]:
+        self.stats["events"] += 1
+        self.stats["event_seq"] += 1
+        now = time.time()
+        self.stats["last_event_ts"] = now
+        return self.stats["event_seq"], now
+
+    def _collect_text(
+        self,
+        payload: dict[str, Any],
+        talk_type: Optional[str],
+        event_seq: int,
+        ts: float,
+    ) -> None:
         talk_event = payload.get("talkEvent") if isinstance(payload.get("talkEvent"), dict) else {}
         candidates = [
             payload.get("text"),
@@ -307,12 +326,18 @@ class GatewayTalkClient:
         for item in candidates:
             if isinstance(item, str) and item.strip():
                 text = item.strip()
+                entry = {
+                    "text": text,
+                    "sessionId": payload.get("sessionId")
+                    or payload.get("relaySessionId"),
+                    "talkType": talk_type,
+                    "eventSeq": event_seq,
+                    "ts": ts,
+                }
                 if talk_type and "transcript" in str(talk_type):
-                    if text not in self.stats["transcripts"]:
-                        self.stats["transcripts"].append(text)
+                    self.stats["transcripts"].append(entry)
                 elif talk_type and "text" in str(talk_type):
-                    if text not in self.stats["texts"]:
-                        self.stats["texts"].append(text)
+                    self.stats["texts"].append(entry)
                 break
 
     async def _request(self, method: str, params: dict[str, Any]) -> dict[str, Any]:
@@ -339,7 +364,7 @@ class GatewayTalkClient:
                     continue
                 if kind == "event":
                     name = str(message.get("event") or "")
-                    self.stats["events"] += 1
+                    event_seq, event_ts = self._next_event()
                     if name and name not in self.stats["event_names"]:
                         self.stats["event_names"].append(name)
                     payload = message.get("payload") or {}
@@ -354,7 +379,7 @@ class GatewayTalkClient:
                     if talk_type and talk_type not in self.stats["talk_event_types"]:
                         self.stats["talk_event_types"].append(talk_type)
                     if isinstance(payload, dict):
-                        self._collect_text(payload, talk_type)
+                        self._collect_text(payload, talk_type, event_seq, event_ts)
                     session_id = ""
                     if isinstance(payload, dict):
                         session_id = str(
@@ -365,9 +390,17 @@ class GatewayTalkClient:
                     if payload_type == "ready" or talk_type == "session.ready":
                         self._mark_ready(session_id)
                     if name == "talk.event" and self._listener is not None:
-                        result = self._listener(payload)
-                        if asyncio.iscoroutine(result):
-                            await result
+                        # A dead device WS (or any listener failure) must never
+                        # kill the shared Talk reader; log and keep draining.
+                        try:
+                            result = self._listener(payload)
+                            if asyncio.iscoroutine(result):
+                                await result
+                        except Exception:
+                            LOGGER.warning(
+                                "talk listener dispatch failed; continuing",
+                                exc_info=True,
+                            )
         except asyncio.CancelledError:
             return
         except Exception:

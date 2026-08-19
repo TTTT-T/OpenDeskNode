@@ -27,10 +27,13 @@
 
 ### 预计模块
 
-`docs/VOICE_BRIDGE_PROTOCOL.md`；`bridge/` 薄服务。C0 host + live Talk 已通。C1 **代码已落地**
-（`components/voice/` + `audio_owner` + 严格帧/seq/queue/`speech_end` 静音），
-真机已证明 ESP32→Bridge→Talk `input.audio.delta`；**Realtime 中文转写
-尚未拿到**（USB-JTAG 卡住，待上电重测）。不得破坏 Phase 2A `audio_hw`
+`docs/VOICE_BRIDGE_PROTOCOL.md`；`bridge/` 薄服务。C0 host + live Talk 已通。C1 **代码已落地
+并完成 hardening**（per-utterance drop 窗口、audio 失败路径清理、watcher
+baseline 防陈旧证据、Talk reader 存活性、Bridge URI 可移植化）；host 侧
+live 预检已证明 WS 设备路径 → Bridge → Talk → Realtime `transcript.done`
+（`artifacts/phase-02c/c1-ws-precheck.json`，host TTS 证据，**不算 C1 验收**）。
+真机链路被 **USB-JTAG 卡死阻塞**（esptool `No serial data received`，
+与上轮记录一致），需物理断电恢复后重测。不得破坏 Phase 2A `audio_hw`
 / codec / I2S / AEC。不要把 C1 写成已验收。
 
 ### 验收标准
@@ -101,7 +104,10 @@ Phase 2A 硬件基线已验收，不得破坏。
 
 ## 下一步
 
-1. 先补完 C1 真机中文转写（上电重测：BOOT 单击 + 对着 MIC 说中文），
+1. C1 真机验收（前置：ESP32 **完整断电再上电** 恢复 USB-JTAG；固件已构建
+   待烧录，URI 走 `TTT-Macmini.local` mDNS）：BOOT 单击 + 真人中文 ×3 轮 +
+   双击 2A selftest（ownership 让权→归还）+ 股票链确认；watcher
+   `scripts/phase-02c-c1-live.py` 只认 baseline 后新增的 `transcript.done`。
    不要开始 C2。
 2. 运维（不进固件）：EVA 主模型 zai token；headless OAuth 续期。
 3. 旧遗留补测：下一交易时段行情推进；2A WAV 限速与 AEC 模式对比。

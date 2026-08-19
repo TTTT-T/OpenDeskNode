@@ -135,6 +135,7 @@ def create_app(
                 "device_id": getattr(current, "device_id", None) or state.get("last_device_id"),
                 "helloed": bool(getattr(current, "helloed", False)),
                 "conversation_id": getattr(current, "conversation_id", None),
+                "talk_session_id": getattr(current, "talk_session_id", None),
                 "metrics": dict(getattr(current, "metrics", None) or state.get("last_metrics") or {}),
                 "conversations": state["conversations"],
                 "commit_silence_ms": runtime.commit_silence_ms,
