@@ -26,10 +26,19 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(len(frame), 16 + FRAME_BYTES)
 
     def test_rejects_bad_magic(self):
-        frame = pack_audio_frame(1, 0, 0, b"\x00\x00")
+        frame = pack_audio_frame(1, 0, 0, b"\x00" * FRAME_BYTES)
         broken = b"\x00" + frame[1:]
         with self.assertRaises(ProtocolError) as caught:
             unpack_audio_frame(broken)
+        self.assertEqual(caught.exception.code, "invalid_message")
+
+    def test_rejects_wrong_frame_length(self):
+        with self.assertRaises(ProtocolError) as caught:
+            pack_audio_frame(1, 0, 0, b"\x00\x00")
+        self.assertEqual(caught.exception.code, "invalid_message")
+        frame = pack_audio_frame(1, 0, 0, b"\x00" * FRAME_BYTES)
+        with self.assertRaises(ProtocolError) as caught:
+            unpack_audio_frame(frame[:-2])
         self.assertEqual(caught.exception.code, "invalid_message")
 
     def test_hello_accepts_device_contract(self):

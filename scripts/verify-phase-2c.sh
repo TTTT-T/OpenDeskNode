@@ -10,13 +10,63 @@ if [[ -z "${PYTHON_BIN:-}" ]]; then
   fi
 fi
 PYTHON_CACHE="${PYTHONPYCACHEPREFIX:-/tmp/esp32-phase-2c-pycache}"
+voice_dir="$ROOT_DIR/firmware/product/components/voice"
 
 cd "$ROOT_DIR"
+
+required_files=(
+  "$voice_dir/voice_protocol.c"
+  "$voice_dir/voice_runtime.c"
+  "$voice_dir/include/voice_protocol.h"
+  "$voice_dir/include/voice_runtime.h"
+  "$ROOT_DIR/firmware/product/components/audio/audio_owner.c"
+  "$ROOT_DIR/firmware/product/components/audio/include/audio_owner.h"
+  "$ROOT_DIR/tests/test_bridge_c1.py"
+)
+for file in "${required_files[@]}"; do
+  [[ -f "$file" ]] || { echo "Missing Phase 2C C1 file: $file" >&2; exit 1; }
+done
+
+rg -q 'audio_owner_acquire' "$ROOT_DIR/firmware/product/components/audio/audio_selftest.c"
+rg -q 'audio_owner_acquire' "$voice_dir/voice_runtime.c"
+rg -q 'AUDIO_OWNER_VOICE' "$voice_dir/voice_runtime.c"
+rg -q 'AUDIO_OWNER_SELFTEST' "$ROOT_DIR/firmware/product/components/audio/audio_selftest.c"
+rg -q 'voice_runtime_start' "$ROOT_DIR/firmware/product/main/app_main.c"
+rg -q 'voice_runtime_request_talk' "$ROOT_DIR/firmware/product/main/app_main.c"
+rg -q 'VOICE_FRAME_BYTES' "$voice_dir/include/voice_protocol.h"
+rg -q 'VOICE_TXQ_FRAMES 100' "$voice_dir/include/voice_protocol.h"
+rg -q '_commit_turn' "$ROOT_DIR/bridge/session.py"
+rg -q 'commit_silence_ms' "$ROOT_DIR/bridge/session.py"
+
+if rg -n 'talk\.session|openai\.com|OPENAI_API_KEY|api\.tenclass\.net|xiaozhi\.me' \
+  "$voice_dir/voice_runtime.c" "$voice_dir/voice_protocol.c" \
+  "$voice_dir/include/voice_runtime.h" "$voice_dir/include/voice_protocol.h"; then
+  echo "Firmware voice transport must not contain OpenClaw/OpenAI/Xiaozhi APIs" >&2
+  exit 1
+fi
+
+if rg -n 'audio_hw_read|audio_hw_write' "$voice_dir/voice_runtime.c" >/dev/null && \
+   rg -n 'audio_owner_acquire\(AUDIO_OWNER_VOICE' "$voice_dir/voice_runtime.c" >/dev/null; then
+  :
+else
+  echo "Voice runtime must own audio before RX/TX" >&2
+  exit 1
+fi
+
 PYTHONPYCACHEPREFIX="$PYTHON_CACHE" "$PYTHON_BIN" -m unittest \
   tests.test_bridge_protocol tests.test_bridge_audio tests.test_bridge_c0 \
-  tests.test_bridge_config -v
+  tests.test_bridge_config tests.test_bridge_c1 -v
 PYTHONPYCACHEPREFIX="$PYTHON_CACHE" "$PYTHON_BIN" -m py_compile \
   bridge/__init__.py bridge/protocol.py bridge/audio.py bridge/config.py \
-  bridge/talk.py bridge/session.py bridge/app.py bridge/__main__.py
+  bridge/talk.py bridge/session.py bridge/app.py bridge/__main__.py \
+  scripts/phase-02c-c0-live.py scripts/phase-02c-c1-live.py
+
+work_dir="$(mktemp -d)"
+trap 'rm -rf "$work_dir"' EXIT
+cc -std=c99 -Wall -Werror -Wextra -I"$voice_dir/include" \
+  "$voice_dir/test/test_voice_protocol.c" "$voice_dir/voice_protocol.c" \
+  -o "$work_dir/test_voice_protocol"
+"$work_dir/test_voice_protocol"
+
 git diff --check
-echo "phase-2c C0 host verification: OK"
+echo "phase-2c C1 host verification: OK"

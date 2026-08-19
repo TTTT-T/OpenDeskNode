@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "audio_hw.h"
+#include "audio_owner.h"
 #include "audio_stimulus.h"
 #include "esp_aec.h"
 #include "esp_check.h"
@@ -442,60 +443,32 @@ static esp_err_t run_selftest_sequence(void)
 
 static void audio_task(void *arg)
 {
-    /* Let Wi-Fi join and the stock service take its first snapshot first. */
-    vTaskDelay(pdMS_TO_TICKS(8000));
-
-    if (run_selftest_sequence() != ESP_OK) {
-        printf("PHASE2A_SEQ selftest_end FAIL\n");
-        fflush(stdout);
-    }
-
-    /* Stability loop: keep RX + AEC + TX continuously active. */
-    aec_handle_t *aec = aec_create(AUDIO_HW_SAMPLE_RATE, 4, 1, AEC_MODE_VOIP_HIGH_PERF);
-    int chunk = aec != NULL ? aec_get_chunksize(aec) : 0;
-    if (chunk <= 0) {
-        ESP_LOGE(TAG, "stability aec unavailable");
-        chunk = 320;
-    }
-    int16_t *mic0 = heap_caps_malloc(1024 * sizeof(int16_t), MALLOC_CAP_INTERNAL);
-    int16_t *ref = heap_caps_malloc(1024 * sizeof(int16_t), MALLOC_CAP_INTERNAL);
-    int16_t *mic1 = heap_caps_malloc(1024 * sizeof(int16_t), MALLOC_CAP_INTERNAL);
-    int16_t *out = heap_caps_malloc(1024 * sizeof(int16_t), MALLOC_CAP_INTERNAL);
-    int16_t *silence = heap_caps_calloc(1024, sizeof(int16_t), MALLOC_CAP_INTERNAL);
-    TickType_t last_log = xTaskGetTickCount();
-    uint32_t frames = 0;
-    bool buffers_ok = mic0 && ref && mic1 && out && silence;
-
-    while (buffers_ok) {
-        if (xEventGroupGetBits(s_events) & RERUN_BIT) {
-            xEventGroupClearBits(s_events, RERUN_BIT);
-            if (!s_selftest_busy && aec != NULL) {
-                aec_destroy(aec);
-                aec = NULL;
-            }
-            if (!s_selftest_busy) {
-                run_selftest_sequence();
-                aec = aec_create(AUDIO_HW_SAMPLE_RATE, 4, 1, AEC_MODE_VOIP_HIGH_PERF);
-            }
+    while (true) {
+        xEventGroupWaitBits(s_events, RERUN_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+        if (s_selftest_busy) {
+            continue;
         }
-        if (audio_hw_read(mic0, ref, mic1, chunk) == ESP_OK) {
-            if (aec != NULL) {
-                aec_process(aec, mic0, ref, out);
-            }
-            audio_hw_write(silence, chunk);
-            frames++;
+        audio_owner_request(AUDIO_OWNER_SELFTEST);
+        if (audio_owner_acquire(AUDIO_OWNER_SELFTEST, pdMS_TO_TICKS(3000)) != ESP_OK) {
+            ESP_LOGW(TAG, "selftest could not acquire audio");
+            printf("PHASE2A_SEQ selftest_end FAIL\n");
+            fflush(stdout);
+            audio_owner_request(AUDIO_OWNER_VOICE);
+            continue;
         }
-        if ((xTaskGetTickCount() - last_log) >= pdMS_TO_TICKS(STABILITY_LOG_PERIOD_S * 1000)) {
-            log_resource_line("tick", frames);
-            last_log = xTaskGetTickCount();
+        if (run_selftest_sequence() != ESP_OK) {
+            printf("PHASE2A_SEQ selftest_end FAIL\n");
+            fflush(stdout);
         }
+        log_resource_line("selftest", 0);
+        audio_owner_release(AUDIO_OWNER_SELFTEST);
+        audio_owner_request(AUDIO_OWNER_VOICE);
     }
-    ESP_LOGE(TAG, "stability loop buffers missing; task exiting");
-    vTaskDelete(NULL);
 }
 
 esp_err_t audio_selftest_start(void)
 {
+    ESP_RETURN_ON_ERROR(audio_owner_init(), TAG, "audio owner");
     if (s_events == NULL) {
         s_events = xEventGroupCreateStatic(&s_event_group);
     }
@@ -509,7 +482,7 @@ void audio_selftest_request_rerun(void)
 {
     if (s_events != NULL) {
         xEventGroupSetBits(s_events, RERUN_BIT);
-        ESP_LOGI(TAG, "BOOT press: self-test rerun requested");
+        ESP_LOGI(TAG, "diagnostic self-test requested");
     }
 }
 

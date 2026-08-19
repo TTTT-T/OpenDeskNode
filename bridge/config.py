@@ -102,6 +102,7 @@ class BridgeConfig:
     keepalive_ms: int = 10000
     talk_url: str = "ws://127.0.0.1:18789"
     talk_enabled: bool = True
+    commit_silence_ms: int = 1000
     log_path: str = ":memory:"
 
     @classmethod
@@ -113,5 +114,6 @@ class BridgeConfig:
             keepalive_ms=_env_int("EVA_VOICE_BRIDGE_KEEPALIVE_MS", 10000),
             talk_url=_env_text("EVA_VOICE_BRIDGE_TALK_URL", "ws://127.0.0.1:18789"),
             talk_enabled=talk_enabled,
+            commit_silence_ms=_env_int("EVA_VOICE_BRIDGE_COMMIT_SILENCE_MS", 1000),
             log_path=_env_text("EVA_VOICE_BRIDGE_LOG", ":memory:"),
         )

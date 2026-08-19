@@ -1,6 +1,6 @@
 # 项目当前状态
 
-最后更新：2026-08-18
+最后更新：2026-08-19
 
 本文件是当前阶段与状态的唯一入口。文档归属见 [DOCUMENT_INDEX.md](DOCUMENT_INDEX.md)。
 新会话从这里定位当前 Phase，再按需读取指向的 canonical 文档；不为背景加载
@@ -27,14 +27,17 @@
 
 ### 预计模块
 
-`docs/VOICE_BRIDGE_PROTOCOL.md`；`bridge/` 薄服务。C0 host + live Talk 已通。
-C1 起才增量改 `firmware/product` voice transport。不得破坏 Phase 2A
-`components/audio/`。
+`docs/VOICE_BRIDGE_PROTOCOL.md`；`bridge/` 薄服务。C0 host + live Talk 已通。C1 **代码已落地**
+（`components/voice/` + `audio_owner` + 严格帧/seq/queue/`speech_end` 静音），
+真机已证明 ESP32→Bridge→Talk `input.audio.delta`；**Realtime 中文转写
+尚未拿到**（USB-JTAG 卡住，待上电重测）。不得破坏 Phase 2A `audio_hw`
+/ codec / I2S / AEC。不要把 C1 写成已验收。
 
 ### 验收标准
 
-C0 Bridge↔Talk（host fixture）；C1 上行中文；C2 下行播放；C3 本地先停的
-barge-in；C4 一次唤醒多轮；C5 Bridge/Gateway/Wi-Fi 恢复且不必重启 ESP32。
+C0 Bridge↔Talk（host fixture，已通）；C1 上行中文（实现已合入，真机转写
+Pending）；C2 下行播放；C3 本地先停的 barge-in；C4 一次唤醒多轮；C5
+Bridge/Gateway/Wi-Fi 恢复且不必重启 ESP32。C2–C5 尚未开始。
 
 ### 风险与回滚点
 
@@ -80,7 +83,8 @@ Phase 2A 硬件基线已验收，不得破坏。
   BOOT/Wi-Fi；1C mock 看板；1E 真实 4 股看板；2A 音频硬件。
 - `firmware/xiaozhi/`：v2.4.2 冻结参考（tag `phase-1b-xiaozhi-reference`）。
 - Stock Gateway Phase 1D 已在 NAS/非交易时段验收；交易时段补测保留。
-- 语音软件主链 2B 已验证；Voice Bridge 尚未实现。
+- 语音软件主链 2B 已验证；Voice Bridge C0 已通，C1 transport 已实现但
+  真机中文转写未验收；C2 下行未做。
 
 历史阶段的范围/证据只在对应报告，不在本文件展开：
 [1E](phase-reports/phase-01e-live-stock-dashboard.md)、
@@ -97,7 +101,8 @@ Phase 2A 硬件基线已验收，不得破坏。
 
 ## 下一步
 
-1. 完成 Phase 2C：协议冻结 → C0 Bridge skeleton → C1–C5。
+1. 先补完 C1 真机中文转写（上电重测：BOOT 单击 + 对着 MIC 说中文），
+   不要开始 C2。
 2. 运维（不进固件）：EVA 主模型 zai token；headless OAuth 续期。
 3. 旧遗留补测：下一交易时段行情推进；2A WAV 限速与 AEC 模式对比。
 

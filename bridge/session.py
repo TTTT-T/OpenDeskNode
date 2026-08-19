@@ -7,7 +7,7 @@ import logging
 import time
 from typing import Any, Awaitable, Callable, Optional
 
-from .audio import FrameSplitter, downsample_24k_to_16k, upsample_16k_to_24k
+from .audio import FrameSplitter, TALK_HZ, downsample_24k_to_16k, upsample_16k_to_24k
 from .protocol import (
     FLAG_UTTERANCE_END,
     FLAG_UTTERANCE_START,
@@ -36,11 +36,13 @@ class DeviceSession:
         send_bytes: SendBytes,
         keepalive_ms: int = 10000,
         conversation_id: int = 1,
+        commit_silence_ms: int = 1000,
     ):
         self.talk = talk
         self._send_text = send_text
         self._send_bytes = send_bytes
         self.keepalive_ms = keepalive_ms
+        self.commit_silence_ms = commit_silence_ms
         self.device_id = ""
         self.helloed = False
         self.conversation_id = conversation_id
@@ -54,7 +56,13 @@ class DeviceSession:
             "uplink_frames": 0,
             "downlink_frames": 0,
             "dropped_old": 0,
+            "seq_dup": 0,
+            "seq_gap": 0,
+            "seq_reorder": 0,
+            "commit_silence_bytes": 0,
+            "uplink_peak": 0,
         }
+        self._uplink_pcm = bytearray()
         self._up = upsample_16k_to_24k()
         self._down = downsample_24k_to_16k()
         self._down_frames = FrameSplitter()
@@ -90,9 +98,15 @@ class DeviceSession:
             return
         if kind == "speech_start":
             self._require_conversation(message)
+            self.uplink_seq_seen = -1
             return
         if kind == "speech_end":
             self._require_conversation(message)
+            await self._commit_turn()
+            try:
+                self.dump_uplink_wav("artifacts/phase-02c/c1-uplink.wav")
+            except OSError:
+                LOGGER.warning("could not dump uplink wav")
             if hasattr(self.talk, "maybe_auto_reply") and self.talk_session_id:
                 await self.talk.maybe_auto_reply(self.talk_session_id)
             return
@@ -112,13 +126,34 @@ class DeviceSession:
         if not self.helloed or not self.talk_session_id:
             self.metrics["dropped_old"] += 1
             return
-        parsed = unpack_audio_frame(frame)
+        try:
+            parsed = unpack_audio_frame(frame)
+        except ProtocolError:
+            self.metrics["dropped_old"] += 1
+            return
         if parsed["conversation_id"] != self.conversation_id:
             self.metrics["dropped_old"] += 1
             return
+        seq = parsed["seq"]
+        if self.uplink_seq_seen >= 0:
+            if seq == self.uplink_seq_seen:
+                self.metrics["seq_dup"] += 1
+                return
+            if seq < self.uplink_seq_seen:
+                self.metrics["seq_reorder"] += 1
+                return
+            if seq > self.uplink_seq_seen + 1:
+                self.metrics["seq_gap"] += seq - self.uplink_seq_seen - 1
+        self.uplink_seq_seen = seq
         pcm16 = parsed["pcm"]
         self.metrics["uplink_frames"] += 1
         self.metrics["uplink_bytes"] += len(pcm16)
+        peak = max(
+            abs(int.from_bytes(pcm16[i : i + 2], "little", signed=True))
+            for i in range(0, len(pcm16), 2)
+        )
+        self.metrics["uplink_peak"] = max(int(self.metrics.get("uplink_peak") or 0), peak)
+        self._uplink_pcm.extend(pcm16)
         pcm24 = self._up.process(pcm16)
         if pcm24:
             await self.talk.append_audio(
@@ -204,6 +239,31 @@ class DeviceSession:
         self.down_seq = 0
         self.playing = False
         await self._send_text(conversation_opened(self.conversation_id))
+
+    def dump_uplink_wav(self, path: str) -> None:
+        import wave
+        from pathlib import Path
+
+        dest = Path(path)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        with wave.open(str(dest), "wb") as handle:
+            handle.setnchannels(1)
+            handle.setsampwidth(2)
+            handle.setframerate(16000)
+            handle.writeframes(bytes(self._uplink_pcm))
+
+    async def _commit_turn(self) -> None:
+        if not self.talk_session_id or self.commit_silence_ms <= 0:
+            return
+        samples = TALK_HZ * self.commit_silence_ms // 1000
+        silence = b"\x00" * (samples * 2)
+        chunk = 960
+        for offset in range(0, len(silence), chunk):
+            await self.talk.append_audio(
+                self.talk_session_id,
+                silence[offset : offset + chunk],
+            )
+        self.metrics["commit_silence_bytes"] += len(silence)
 
     async def _interrupt(self) -> None:
         self._down.reset()

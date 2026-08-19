@@ -1,6 +1,6 @@
 # 当前系统架构
 
-最后核验：2026-08-18
+最后核验：2026-08-19
 
 文档归属见 [DOCUMENT_INDEX.md](DOCUMENT_INDEX.md)。本文只描述**当前有效系统**，
 不堆叠已废弃方案。决策理由见 [DECISIONS.md](DECISIONS.md) /
@@ -127,7 +127,8 @@ firmware/product
 │  ├─ display/          ST7305 RLCD + LVGL 最小页面
 │  ├─ network/          NVS、event loop、Wi-Fi station/最小配网
 │  ├─ stock/            model/view、Gateway HTTP/JSON client 与 host test
-│  └─ audio/            ES7210/ES8311、I2S、AEC、2A 自检（已验收）
+│  ├─ audio/            ES7210/ES8311、I2S、AEC、owner、2A 诊断自检
+│  └─ voice/            C1 起 Voice Runtime：Bridge WS 与 16 kHz 上行
 ├─ partitions.csv       16 MB Flash、单 factory app、无 OTA
 └─ sdkconfig.defaults   ESP32-S3、octal 8 MB PSRAM、DIO 80 MHz
 ```
@@ -140,9 +141,14 @@ app_main
   ├─ display_init → esp_lcd SPI → ST7305 → LVGL clean page
   ├─ stock_service_start → stock_svc task（16384 B 栈：view、Wi-Fi 就绪、
   │  约 10 秒 Gateway 轮询、解析/降级、刷新与指标日志）
-  ├─ audio selftest / 2A 音频任务
-  ├─ board_button_init → GPIO ISR → debounced event callback
+  ├─ audio_selftest_start → 诊断任务（不默认占用 I2S；双击 BOOT 才抢权）
+  ├─ voice_runtime_start → 默认音频 RX/TX owner + Bridge 上行
+  ├─ board_button_init → 单击 Talk / 双击 2A 诊断
   └─ network_init → NVS + netif + event loop → Wi-Fi station
+
+产品运行时只有一个音频 RX/TX owner（`audio_owner`）。Voice Runtime 是
+默认 owner；Phase 2A selftest 仍可调用，但必须先让 Voice 让权。C1 只做
+ESP32 → Bridge 上行，不做下行播放 / barge-in / 多轮 / C5 重连。
 ```
 
 Phase 1E 仍把股票业务限制在 `components/stock/`：`stock_model.c` 与测试用

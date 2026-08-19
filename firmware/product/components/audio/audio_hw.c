@@ -2,6 +2,7 @@
 
 #include <string.h>
 
+#include "audio_owner.h"
 #include "audio_codec_data_if.h"
 #include "audio_codec_gpio_if.h"
 #include "board.h"
@@ -251,6 +252,9 @@ esp_err_t audio_hw_output_enable(bool enable)
 
 esp_err_t audio_hw_read(int16_t *mic0, int16_t *ref, int16_t *mic1, int samples)
 {
+    if (audio_owner_current() == AUDIO_OWNER_NONE) {
+        return ESP_ERR_INVALID_STATE;
+    }
     int16_t interleaved[3 * 64];
     int done = 0;
     while (done < samples) {
@@ -272,6 +276,9 @@ esp_err_t audio_hw_read(int16_t *mic0, int16_t *ref, int16_t *mic1, int samples)
 
 esp_err_t audio_hw_write(const int16_t *pcm, int samples)
 {
+    if (audio_owner_current() == AUDIO_OWNER_NONE) {
+        return ESP_ERR_INVALID_STATE;
+    }
     const int ret = esp_codec_dev_write(s_hw.output_dev, (void *)pcm, samples * sizeof(int16_t));
     if (ret != ESP_CODEC_DEV_OK) {
         ESP_LOGE(TAG, "esp_codec_dev_write: %d", ret);

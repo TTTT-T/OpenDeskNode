@@ -49,8 +49,8 @@ def pack_audio_frame(
     pcm: bytes,
     flags: int = 0,
 ) -> bytes:
-    if len(pcm) % 2:
-        raise ProtocolError("invalid_message", "PCM payload must be even")
+    if len(pcm) != FRAME_BYTES:
+        raise ProtocolError("invalid_message", "PCM payload must be %d bytes" % FRAME_BYTES)
     header = struct.pack(
         "<BBBBIII",
         MAGIC,
@@ -75,8 +75,8 @@ def unpack_audio_frame(frame: bytes) -> dict[str, Any]:
     if version != PROTOCOL_VERSION:
         raise ProtocolError("unsupported_version", "audio version %s" % version)
     payload = frame[HEADER_SIZE:]
-    if len(payload) % 2:
-        raise ProtocolError("invalid_message", "PCM payload must be even")
+    if len(payload) != FRAME_BYTES:
+        raise ProtocolError("invalid_message", "PCM payload must be %d bytes" % FRAME_BYTES)
     return {
         "conversation_id": conversation_id,
         "seq": seq,

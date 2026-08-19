@@ -19,6 +19,7 @@
 #include "esp_psram.h"
 #include "network.h"
 #include "stock_service.h"
+#include "voice_runtime.h"
 
 static const char *TAG = "bootstrap";
 static const size_t EXPECTED_FLASH_BYTES = 16U * 1024U * 1024U;
@@ -49,14 +50,13 @@ static bool report_memory_baseline(void)
 
 static void on_boot_button_pressed(board_button_event_t event)
 {
-    /* Phase 2A: single press re-runs the audio self-test, double press
-     * toggles the speaker volume as audible button evidence. */
     if (event == BOARD_BUTTON_DOUBLE_PRESS) {
-        audio_selftest_toggle_volume();
-    } else {
         audio_selftest_request_rerun();
+        display_set_button_status("Selftest");
+    } else {
+        voice_runtime_request_talk();
+        display_set_button_status("Talk");
     }
-    display_set_button_status(event == BOARD_BUTTON_DOUBLE_PRESS ? "2xPress" : "Pressed");
 }
 
 static void on_wifi_status_changed(network_status_t status)
@@ -77,10 +77,8 @@ void app_main(void)
      * and all LVGL stock updates; app_main never touches stock widgets. */
     ESP_ERROR_CHECK(stock_service_start());
 
-    /* Phase 2A: audio hardware bring-up runs after the dashboard task is up;
-     * BOOT re-triggers the audio self-test at any time. */
     ESP_ERROR_CHECK(audio_selftest_start());
-
     ESP_ERROR_CHECK(board_button_init(on_boot_button_pressed));
     ESP_ERROR_CHECK(network_init(on_wifi_status_changed));
+    ESP_ERROR_CHECK(voice_runtime_start());
 }

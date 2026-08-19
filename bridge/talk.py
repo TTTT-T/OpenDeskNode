@@ -154,6 +154,8 @@ class GatewayTalkClient:
             "talk_event_types": [],
             "append_ok": 0,
             "append_fail": 0,
+            "transcripts": [],
+            "texts": [],
         }
         self._ready_sessions: set[str] = set()
         self._ready_waiters: dict[str, asyncio.Event] = {}
@@ -294,6 +296,25 @@ class GatewayTalkClient:
     async def close_session(self, session_id: str) -> None:
         await self._request("talk.session.close", {"sessionId": session_id})
 
+    def _collect_text(self, payload: dict[str, Any], talk_type: Optional[str]) -> None:
+        talk_event = payload.get("talkEvent") if isinstance(payload.get("talkEvent"), dict) else {}
+        candidates = [
+            payload.get("text"),
+            payload.get("transcript"),
+            talk_event.get("text") if isinstance(talk_event, dict) else None,
+            talk_event.get("transcript") if isinstance(talk_event, dict) else None,
+        ]
+        for item in candidates:
+            if isinstance(item, str) and item.strip():
+                text = item.strip()
+                if talk_type and "transcript" in str(talk_type):
+                    if text not in self.stats["transcripts"]:
+                        self.stats["transcripts"].append(text)
+                elif talk_type and "text" in str(talk_type):
+                    if text not in self.stats["texts"]:
+                        self.stats["texts"].append(text)
+                break
+
     async def _request(self, method: str, params: dict[str, Any]) -> dict[str, Any]:
         if self._ws is None:
             raise RuntimeError("Talk client not connected")
@@ -332,6 +353,8 @@ class GatewayTalkClient:
                             talk_type = talk_event.get("type")
                     if talk_type and talk_type not in self.stats["talk_event_types"]:
                         self.stats["talk_event_types"].append(talk_type)
+                    if isinstance(payload, dict):
+                        self._collect_text(payload, talk_type)
                     session_id = ""
                     if isinstance(payload, dict):
                         session_id = str(

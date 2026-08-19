@@ -102,7 +102,6 @@ async def run_live(talk_url: str, text: str, timeout: float) -> dict:
             return metrics
         metrics["session"] = True
         pcm = await asyncio.to_thread(_say_pcm, text)
-        pcm += b"\x00" * (DEVICE_HZ * 2)  # 1s silence for server VAD
         await session.handle_text(
             {"type": "speech_start", "conversation_id": session.conversation_id}
         )

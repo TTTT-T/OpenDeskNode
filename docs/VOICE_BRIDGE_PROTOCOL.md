@@ -34,8 +34,10 @@ Owner：Phase 2C。[阶段定义](PHASE2C_EVA_VOICE_BRIDGE.md)。
 
 codec 标识：`pcm_s16le_16k_mono`。双方 `hello` 只接受该值。
 时间戳：发送方单调毫秒，仅诊断。seq：每方向每 turn 从 0 递增。
-jitter：接收方对乱序/重复计数，不中断会话；播放侧用有界 jitter buffer，
-深度在 C2/C3 实测后记录，不先写死。
+**C1 起二进制 PCM 必须恰好 640 B**；非该长度的帧静默丢弃并计入
+`dropped_old`。seq 重复丢弃并计 `seq_dup`；乱序迟到丢弃并计
+`seq_reorder`；出现缺口计 `seq_gap`，会话不中断。播放侧 jitter buffer
+仍待 C2/C3 实测，不先写死。
 
 24 kHz 证据：OpenClaw 2026.7.1-2 `dist/talk-Caq_w59s.js` 创建 relay 时
 `audioFormat = REALTIME_VOICE_AUDIO_FORMAT_PCM16_24KHZ`。
@@ -79,7 +81,8 @@ any → ERROR → 重连 hello → IDLE
 | `wake` | `phrase?` | 本地唤醒（「你好 EVA」或测试按键） |
 | `conversation_open` | `reason`(`wake`/`manual`) | 请求会话 |
 | `speech_start` | `conversation_id` | 本 turn 采集开始 |
-| `speech_end` | `conversation_id` | 本 turn 采集结束 |
+| `speech_end` | `conversation_id` | 本 turn **设备采集结束**。不是 Realtime commit。
+  Bridge 在转发后注入 1000 ms @24 kHz 静音，供 server VAD 收尾 |
 | `interrupt` | `conversation_id` | **已本地停播**；Bridge 对 Talk `cancelOutput` |
 | `cancel` | `conversation_id`, `reason` | 作废当前会话 |
 | `conversation_end` | `conversation_id`, `reason`(`timeout`/`user`/`error`) | 设备侧结束 |
@@ -111,7 +114,7 @@ Device                              Bridge                         Talk
   │ wake / conversation_open ───────▶│ talk.session.create ────────▶│
   │◀──── conversation_opened ────────│◀──── session.ready ──────────│
   │ speech_start + 16k PCM ─────────▶│ resample 24k appendAudio ───▶│
-  │ speech_end ─────────────────────▶│                              │
+  │ speech_end ─────────────────────▶│ +1000 ms 24 kHz silence ────▶│
   │◀──── playback_start + 16k PCM ───│◀──── output.audio.delta ─────│
   │◀──── playback_end ───────────────│◀──── output.audio.done ──────│
   │   （同一 conversation，无需再唤醒） │                              │
@@ -143,8 +146,15 @@ PLAYING 中用户开口
 
 ## 9. 缓冲
 
-- 上行 ring 建议 64 KB ≈ 2 s @16 kHz；满则 drop-oldest；累计丢弃 ≥1.5 s
-  判 `transport_error`。
+- 上行 ring **C1 已实现**：100 帧 × 640 B = 64 KB ≈ 2 s @16 kHz；满则
+  drop-oldest；累计丢弃 ≥75 帧（1.5 s）判 `transport_error` 并停止本 turn。
+- `speech_end` 与 Realtime server VAD 的责任分层（C1 实测后冻结）：
+  - 设备：只表示采集结束，不补静音，不感知 OpenAI VAD。
+  - Bridge：Talk 无公开 commit API；C0 曾在 host fixture 人工追加 1 s
+    静音。该依赖上收到 Bridge：`speech_end` 后追加 1000 ms pcm16@24k
+    零样本，再交给 server VAD。可用
+    `EVA_VOICE_BRIDGE_COMMIT_SILENCE_MS=0` 关闭（仅诊断）。
+  - Realtime：仍负责 turn detection；Bridge 不重做主 VAD/AEC。
 - interrupt/cancel/end 后清空上、下行队列；迟到旧 conversation 帧丢弃。
 - 不得影响股票看板。
 

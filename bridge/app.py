@@ -85,8 +85,10 @@ def create_app(
             send_bytes=websocket.send_bytes,
             keepalive_ms=runtime.keepalive_ms,
             conversation_id=state["conversations"] + 1,
+            commit_silence_ms=runtime.commit_silence_ms,
         )
         state["conversations"] += 1
+        state["current_session"] = session
         try:
             while True:
                 message = await websocket.receive()
@@ -114,7 +116,30 @@ def create_app(
         except WebSocketDisconnect:
             pass
         finally:
+            state["last_metrics"] = dict(session.metrics)
+            state["last_device_id"] = session.device_id
+            if state.get("current_session") is session:
+                state["current_session"] = None
             await session.close()
+
+    @app.get("/metrics")
+    async def metrics() -> JSONResponse:
+        client = state.get("talk")
+        current = state.get("current_session")
+        return JSONResponse(
+            {
+                "ok": True,
+                "talk_kind": type(client).__name__ if client else None,
+                "talk_connected": bool(getattr(client, "connected", False)),
+                "talk_stats": dict(getattr(client, "stats", {}) or {}),
+                "device_id": getattr(current, "device_id", None) or state.get("last_device_id"),
+                "helloed": bool(getattr(current, "helloed", False)),
+                "conversation_id": getattr(current, "conversation_id", None),
+                "metrics": dict(getattr(current, "metrics", None) or state.get("last_metrics") or {}),
+                "conversations": state["conversations"],
+                "commit_silence_ms": runtime.commit_silence_ms,
+            }
+        )
 
     app.state.bridge = state
     return app

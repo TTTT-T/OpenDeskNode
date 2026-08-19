@@ -146,6 +146,8 @@ queue depth、underrun/overrun。
 2. C0：host FakeTalk 与 **live Talk** 均已通过。
    `bash scripts/verify-phase-2c.sh`；live：`python scripts/phase-02c-c0-live.py`。
    Token 经 OpenClaw exec SecretRef 运行时解析，不入库、不打日志。
-3. C1/C2：ESP32 transport 增量接入 2A 音频。
-4. C3/C4/C5。
+3. C1：transport / audio ownership 已实现（BOOT 单击开始；双击 2A 诊断）。
+   真机曾上行 249×640 B 到 Talk `input.audio.delta`，但 **Realtime 中文
+   转写未拿到**；USB-JTAG 随后卡住。C1 未验收。C2 未开始。
+4. C2 下行播放 → C3 barge-in → C4 多轮 → C5 恢复。
 5. Wake PoC 不阻塞；做不完拆 Phase 2C.x。
