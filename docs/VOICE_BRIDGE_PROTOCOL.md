@@ -37,7 +37,10 @@ codec 标识：`pcm_s16le_16k_mono`。双方 `hello` 只接受该值。
 **C1 起二进制 PCM 必须恰好 640 B**；非该长度的帧静默丢弃并计入
 `dropped_old`。seq 重复丢弃并计 `seq_dup`；乱序迟到丢弃并计
 `seq_reorder`；出现缺口计 `seq_gap`，会话不中断。播放侧 jitter buffer
-仍待 C2/C3 实测，不先写死。
+**C2 已实现**：400 帧 × 320 samples = 8 s @16 kHz 样本环；满则 **drop-newest**
+（保已排队播放连续，Realtime 突发时宁可丢尾）。起播预缓冲 6 帧（120 ms），
+仅作 C2 起始值，C3 可再测。`underrun` 为播放诊断，不中断会话、不参与
+transport gating。
 
 24 kHz 证据：OpenClaw 2026.7.1-2 `dist/talk-Caq_w59s.js` 创建 relay 时
 `audioFormat = REALTIME_VOICE_AUDIO_FORMAT_PCM16_24KHZ`。
@@ -147,7 +150,10 @@ PLAYING 中用户开口
 ## 9. 缓冲
 
 - 上行 ring **C1 已实现**：100 帧 × 640 B = 64 KB ≈ 2 s @16 kHz；满则
-  drop-oldest；累计丢弃 ≥75 帧（1.5 s）判 `transport_error` 并停止本 turn。
+  drop-oldest。1.5 s 阈值（75 帧 × 20 ms）按**每个 utterance / congestion
+  window** 计算：`voice_txq_clear()` 开启新窗口。`dropped_total` 仅为
+  lifetime diagnostic，不参与 transport gating；仅当前窗口 `dropped` ≥75
+  才判 `transport_error` 并停止本 turn。
 - `speech_end` 与 Realtime server VAD 的责任分层（C1 实测后冻结）：
   - 设备：只表示采集结束，不补静音，不感知 OpenAI VAD。
   - Bridge：Talk 无公开 commit API；C0 曾在 host fixture 人工追加 1 s
@@ -155,6 +161,10 @@ PLAYING 中用户开口
     零样本，再交给 server VAD。可用
     `EVA_VOICE_BRIDGE_COMMIT_SILENCE_MS=0` 关闭（仅诊断）。
   - Realtime：仍负责 turn detection；Bridge 不重做主 VAD/AEC。
+- 下行 ring **C2 已实现**：8 s @16 kHz；满则 drop-newest。
+  Realtime 常在设备 5 s 采集窗结束前开始下行，因此采集期间**必须接收并
+  播放**；不得因 `speaking` 丢弃下行。新 utterance 才清播放队列。这不是
+  C3 barge-in（不发 `interrupt` / 不 `cancelOutput`）。
 - interrupt/cancel/end 后清空上、下行队列；迟到旧 conversation 帧丢弃。
 - 不得影响股票看板。
 

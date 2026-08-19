@@ -22,6 +22,8 @@ required_files=(
   "$ROOT_DIR/firmware/product/components/audio/audio_owner.c"
   "$ROOT_DIR/firmware/product/components/audio/include/audio_owner.h"
   "$ROOT_DIR/tests/test_bridge_c1.py"
+  "$ROOT_DIR/tests/test_c2_live_watcher.py"
+  "$ROOT_DIR/scripts/phase-02c-c2-live.py"
 )
 for file in "${required_files[@]}"; do
   [[ -f "$file" ]] || { echo "Missing Phase 2C C1 file: $file" >&2; exit 1; }
@@ -35,8 +37,13 @@ rg -q 'voice_runtime_start' "$ROOT_DIR/firmware/product/main/app_main.c"
 rg -q 'voice_runtime_request_talk' "$ROOT_DIR/firmware/product/main/app_main.c"
 rg -q 'VOICE_FRAME_BYTES' "$voice_dir/include/voice_protocol.h"
 rg -q 'VOICE_TXQ_FRAMES 100' "$voice_dir/include/voice_protocol.h"
+rg -q 'VOICE_RXQ_FRAMES 400' "$voice_dir/include/voice_protocol.h"
+rg -q 'voice_rxq_push_pcm' "$voice_dir/voice_protocol.c"
+rg -q 'playback_start' "$voice_dir/voice_runtime.c"
+rg -q 'PHASE2C_C2' "$voice_dir/voice_runtime.c"
 rg -q '_commit_turn' "$ROOT_DIR/bridge/session.py"
 rg -q 'commit_silence_ms' "$ROOT_DIR/bridge/session.py"
+rg -q 'playback_starts' "$ROOT_DIR/bridge/session.py"
 
 if rg -n 'talk\.session|openai\.com|OPENAI_API_KEY|api\.tenclass\.net|xiaozhi\.me' \
   "$voice_dir/voice_runtime.c" "$voice_dir/voice_protocol.c" \
@@ -62,11 +69,13 @@ fi
 
 PYTHONPYCACHEPREFIX="$PYTHON_CACHE" "$PYTHON_BIN" -m unittest \
   tests.test_bridge_protocol tests.test_bridge_audio tests.test_bridge_c0 \
-  tests.test_bridge_config tests.test_bridge_c1 tests.test_c1_live_watcher -v
+  tests.test_bridge_config tests.test_bridge_c1 tests.test_c1_live_watcher \
+  tests.test_c2_live_watcher -v
 PYTHONPYCACHEPREFIX="$PYTHON_CACHE" "$PYTHON_BIN" -m py_compile \
   bridge/__init__.py bridge/protocol.py bridge/audio.py bridge/config.py \
   bridge/talk.py bridge/session.py bridge/app.py bridge/__main__.py \
-  scripts/phase-02c-c0-live.py scripts/phase-02c-c1-live.py
+  scripts/phase-02c-c0-live.py scripts/phase-02c-c1-live.py \
+  scripts/phase-02c-c2-live.py
 
 work_dir="$(mktemp -d)"
 trap 'rm -rf "$work_dir"' EXIT
@@ -76,4 +85,4 @@ cc -std=c99 -Wall -Werror -Wextra -I"$voice_dir/include" \
 "$work_dir/test_voice_protocol"
 
 git diff --check
-echo "phase-2c C1 host verification: OK"
+echo "phase-2c C2 host verification: OK"

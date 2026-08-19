@@ -20,6 +20,12 @@
  * opens a fresh window (new utterance); dropped_total is a lifetime metric and
  * must never gate transport. */
 #define VOICE_TXQ_DROP_LIMIT (1500 / VOICE_FRAME_MS)
+#define VOICE_RXQ_FRAMES 400
+#define VOICE_RXQ_SAMPLES (VOICE_RXQ_FRAMES * VOICE_SAMPLES_PER_FRAME)
+/* C2 starting prebuffer only; 6 frames x 20 ms = 120 ms. Not a frozen product
+ * constant — C3 may retune after barge-in measurement. */
+#define VOICE_RXQ_PREBUFFER_FRAMES 6
+#define VOICE_RXQ_PREBUFFER_SAMPLES (VOICE_RXQ_PREBUFFER_FRAMES * VOICE_SAMPLES_PER_FRAME)
 
 typedef struct {
     uint32_t conversation_id;
@@ -43,6 +49,17 @@ typedef struct {
     uint16_t peak_count;
 } voice_txq_t;
 
+typedef struct {
+    int16_t samples[VOICE_RXQ_SAMPLES];
+    uint32_t head;
+    uint32_t count;
+    uint32_t dropped_frames;
+    uint32_t pushed_frames;
+    uint32_t popped_samples;
+    uint32_t underrun;
+    uint32_t peak_count;
+} voice_rxq_t;
+
 int voice_pack_frame(uint8_t *out, size_t out_len, uint32_t conversation_id,
                      uint32_t seq, uint32_t ts_ms, uint8_t flags,
                      const int16_t *pcm, int samples);
@@ -52,6 +69,12 @@ int voice_txq_push(voice_txq_t *q, const uint8_t *frame);
 int voice_txq_pop(voice_txq_t *q, uint8_t *frame);
 void voice_txq_clear(voice_txq_t *q);
 int voice_txq_count(const voice_txq_t *q);
+void voice_rxq_init(voice_rxq_t *q);
+int voice_rxq_push_pcm(voice_rxq_t *q, const int16_t *pcm, int samples);
+int voice_rxq_pop_pcm(voice_rxq_t *q, int16_t *pcm, int samples);
+void voice_rxq_clear(voice_rxq_t *q);
+int voice_rxq_count(const voice_rxq_t *q);
+int voice_rxq_ready(const voice_rxq_t *q);
 int voice_hello_json(char *out, size_t out_len, const char *device_id,
                      const char *fw_version);
 int voice_control_json(char *out, size_t out_len, const char *type,

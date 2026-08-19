@@ -19,7 +19,14 @@
 #include "network.h"
 #include "voice_protocol.h"
 
-static const char *TAG = "voice_c1";
+static const char *TAG = "voice";
+
+typedef enum {
+    PLAY_IDLE = 0,
+    PLAY_BUFFERING,
+    PLAY_ACTIVE,
+    PLAY_DRAINING,
+} play_state_t;
 
 #define AUDIO_TASK_STACK 20480
 #define NET_TASK_STACK 8192
@@ -36,16 +43,32 @@ typedef struct {
     EventGroupHandle_t events;
     SemaphoreHandle_t mu;
     voice_txq_t *txq;
+    voice_rxq_t *rxq;
     esp_websocket_client_handle_t ws;
     volatile uint32_t conversation_id;
     uint32_t seq;
     volatile bool speaking;
     volatile bool helloed;
+    volatile play_state_t play;
+    int32_t rx_seq_seen;
     uint32_t frames_sent;
     uint32_t bytes_sent;
+    uint32_t frames_rx;
+    uint32_t frames_play;
+    uint32_t samples_play;
+    uint32_t play_underrun;
+    uint32_t play_peak;
+    uint32_t rx_drop_busy;
+    uint32_t rx_drop_cid;
+    uint32_t rx_dup;
+    uint32_t rx_gap;
+    uint32_t rx_reorder;
     int64_t talk_req_us;
     int64_t speech_start_us;
+    int64_t speech_end_us;
     int64_t first_frame_us;
+    int64_t first_rx_us;
+    int64_t play_start_us;
 } voice_rt_t;
 
 static voice_rt_t s_rt;
@@ -58,15 +81,23 @@ static void log_metrics(const char *label)
     heap_caps_get_info(&internal, MALLOC_CAP_INTERNAL);
     const size_t ps_free = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
     int qdepth = 0;
+    int rxdepth = 0;
     uint32_t dropped = 0;
     uint32_t dropped_total = 0;
     uint32_t qpeak = 0;
+    uint32_t rx_drop = 0;
+    uint32_t rx_peak = 0;
     if (xSemaphoreTake(s_rt.mu, pdMS_TO_TICKS(20)) == pdTRUE) {
         qdepth = voice_txq_count(s_rt.txq);
+        rxdepth = voice_rxq_count(s_rt.rxq);
         if (s_rt.txq != NULL) {
             dropped = s_rt.txq->dropped;
             dropped_total = s_rt.txq->dropped_total;
             qpeak = s_rt.txq->peak_count;
+        }
+        if (s_rt.rxq != NULL) {
+            rx_drop = s_rt.rxq->dropped_frames;
+            rx_peak = s_rt.rxq->peak_count;
         }
         xSemaphoreGive(s_rt.mu);
     }
@@ -79,7 +110,87 @@ static void log_metrics(const char *label)
            (unsigned long)dropped, (unsigned long)dropped_total, qdepth,
            (unsigned long)qpeak, (unsigned)internal.total_free_bytes,
            (unsigned)ps_free);
+    printf("PHASE2C_C2 %s play=%d rxq=%d rx_drop=%lu rx_peak=%lu frames_rx=%lu "
+           "frames_play=%lu underrun=%lu peak=%lu busy_drop=%lu\n",
+           label, (int)s_rt.play, rxdepth, (unsigned long)rx_drop,
+           (unsigned long)rx_peak, (unsigned long)s_rt.frames_rx,
+           (unsigned long)(s_rt.samples_play / VOICE_SAMPLES_PER_FRAME),
+           (unsigned long)s_rt.play_underrun,
+           (unsigned long)s_rt.play_peak, (unsigned long)s_rt.rx_drop_busy);
     fflush(stdout);
+}
+
+static uint32_t pcm_peak(const int16_t *pcm, int samples)
+{
+    uint32_t peak = 0;
+    for (int i = 0; i < samples; i++) {
+        const int32_t v = pcm[i] < 0 ? -(int32_t)pcm[i] : (int32_t)pcm[i];
+        if ((uint32_t)v > peak) {
+            peak = (uint32_t)v;
+        }
+    }
+    return peak;
+}
+
+static void reset_playback_locked(void)
+{
+    if (s_rt.rxq != NULL) {
+        voice_rxq_clear(s_rt.rxq);
+    }
+    s_rt.play = PLAY_IDLE;
+    s_rt.rx_seq_seen = -1;
+}
+
+static void reset_playback(void)
+{
+    if (s_rt.mu != NULL && xSemaphoreTake(s_rt.mu, pdMS_TO_TICKS(20)) == pdTRUE) {
+        reset_playback_locked();
+        xSemaphoreGive(s_rt.mu);
+        return;
+    }
+    reset_playback_locked();
+}
+
+static void begin_playback(void)
+{
+    if (s_rt.mu != NULL && xSemaphoreTake(s_rt.mu, pdMS_TO_TICKS(20)) == pdTRUE) {
+        voice_rxq_clear(s_rt.rxq);
+        xSemaphoreGive(s_rt.mu);
+    }
+    s_rt.play = PLAY_BUFFERING;
+    s_rt.rx_seq_seen = -1;
+    s_rt.frames_rx = 0;
+    s_rt.frames_play = 0;
+    s_rt.samples_play = 0;
+    s_rt.play_underrun = 0;
+    s_rt.play_peak = 0;
+    s_rt.first_rx_us = 0;
+    s_rt.play_start_us = esp_timer_get_time();
+    printf("PHASE2C_C2 playback_start cid=%lu\n", (unsigned long)s_rt.conversation_id);
+    fflush(stdout);
+}
+
+static void finish_playback(const char *why)
+{
+    const int64_t now = esp_timer_get_time();
+    s_rt.frames_play = s_rt.samples_play / VOICE_SAMPLES_PER_FRAME;
+    printf("PHASE2C_C2 play_done why=%s cid=%lu frames_rx=%lu frames_play=%lu "
+           "underrun=%lu drop=%lu qpeak=%lu peak=%lu first_audio_ms=%ld play_ms=%ld "
+           "gap=%lu dup=%lu reorder=%lu\n",
+           why, (unsigned long)s_rt.conversation_id,
+           (unsigned long)s_rt.frames_rx, (unsigned long)s_rt.frames_play,
+           (unsigned long)s_rt.play_underrun,
+           (unsigned long)(s_rt.rxq != NULL ? s_rt.rxq->dropped_frames : 0),
+           (unsigned long)(s_rt.rxq != NULL ? s_rt.rxq->peak_count : 0),
+           (unsigned long)s_rt.play_peak,
+           s_rt.first_rx_us > 0 && s_rt.speech_end_us > 0
+               ? (long)((s_rt.first_rx_us - s_rt.speech_end_us) / 1000)
+               : -1,
+           s_rt.play_start_us > 0 ? (long)((now - s_rt.play_start_us) / 1000) : -1,
+           (unsigned long)s_rt.rx_gap, (unsigned long)s_rt.rx_dup,
+           (unsigned long)s_rt.rx_reorder);
+    fflush(stdout);
+    reset_playback();
 }
 
 static bool send_text(const char *json)
@@ -114,6 +225,18 @@ static void handle_control(const char *text, int len)
     if (strcmp(type->valuestring, "hello_ok") == 0) {
         s_rt.helloed = true;
         xEventGroupSetBits(s_rt.events, HELLO_OK_BIT);
+    } else if (strcmp(type->valuestring, "playback_start") == 0) {
+        begin_playback();
+    } else if (strcmp(type->valuestring, "playback_end") == 0) {
+        if (s_rt.play == PLAY_IDLE) {
+            finish_playback("empty");
+        } else {
+            s_rt.play = PLAY_DRAINING;
+        }
+    } else if (strcmp(type->valuestring, "conversation_end") == 0) {
+        if (s_rt.play != PLAY_IDLE) {
+            finish_playback("ended");
+        }
     } else if (strcmp(type->valuestring, "conversation_opened") == 0) {
         const cJSON *cid = cJSON_GetObjectItemCaseSensitive(root, "conversation_id");
         if (cJSON_IsNumber(cid)) {
@@ -130,10 +253,60 @@ static void handle_control(const char *text, int len)
         if (cJSON_IsString(code) && code->valuestring != NULL &&
             strcmp(code->valuestring, "unknown_conversation") == 0) {
             s_rt.conversation_id = 0;
+            if (s_rt.play != PLAY_IDLE) {
+                finish_playback("invalid");
+            }
             ESP_LOGW(TAG, "conversation invalidated by bridge; will re-open");
         }
     }
     cJSON_Delete(root);
+}
+
+static void handle_downlink(const uint8_t *data, int len)
+{
+    if (len != VOICE_WIRE_BYTES || data == NULL) {
+        return;
+    }
+    voice_frame_view_t view;
+    if (voice_unpack_frame(data, (size_t)len, &view) != 0) {
+        return;
+    }
+    if (s_rt.conversation_id == 0 || view.conversation_id != s_rt.conversation_id) {
+        s_rt.rx_drop_cid++;
+        return;
+    }
+    if (s_rt.rx_seq_seen >= 0) {
+        if (view.seq == (uint32_t)s_rt.rx_seq_seen) {
+            s_rt.rx_dup++;
+            return;
+        }
+        if (view.seq < (uint32_t)s_rt.rx_seq_seen) {
+            s_rt.rx_reorder++;
+            return;
+        }
+        if (view.seq > (uint32_t)s_rt.rx_seq_seen + 1) {
+            s_rt.rx_gap += view.seq - (uint32_t)s_rt.rx_seq_seen - 1;
+        }
+    }
+    s_rt.rx_seq_seen = (int32_t)view.seq;
+    if (s_rt.play == PLAY_IDLE) {
+        s_rt.play = PLAY_BUFFERING;
+        s_rt.play_start_us = esp_timer_get_time();
+    }
+    if (s_rt.mu != NULL && xSemaphoreTake(s_rt.mu, pdMS_TO_TICKS(5)) == pdTRUE) {
+        voice_rxq_push_pcm(s_rt.rxq, (const int16_t *)view.pcm, VOICE_SAMPLES_PER_FRAME);
+        xSemaphoreGive(s_rt.mu);
+    }
+    s_rt.frames_rx++;
+    if (s_rt.first_rx_us == 0) {
+        s_rt.first_rx_us = esp_timer_get_time();
+        printf("PHASE2C_C2 first_audio cid=%lu seq=%lu speech_end_to_rx_ms=%ld\n",
+               (unsigned long)s_rt.conversation_id, (unsigned long)view.seq,
+               s_rt.speech_end_us > 0
+                   ? (long)((s_rt.first_rx_us - s_rt.speech_end_us) / 1000)
+                   : -1);
+        fflush(stdout);
+    }
 }
 
 static void ws_event(void *arg, esp_event_base_t base, int32_t id, void *data)
@@ -153,12 +326,22 @@ static void ws_event(void *arg, esp_event_base_t base, int32_t id, void *data)
         /* Conversation state is bridge-session-scoped: a reconnect lands on a
          * fresh bridge session, so the next utterance must re-open. */
         s_rt.conversation_id = 0;
+        if (s_rt.play != PLAY_IDLE) {
+            finish_playback("disconnect");
+        } else {
+            reset_playback();
+        }
         xEventGroupSetBits(s_rt.events, WS_CLOSED_BIT);
         break;
     case WEBSOCKET_EVENT_DATA:
-        if (evt != NULL && evt->op_code == 0x01 && evt->fin && evt->payload_offset == 0 &&
-            evt->data_ptr != NULL && evt->data_len == evt->payload_len) {
+        if (evt == NULL || evt->data_ptr == NULL || !evt->fin || evt->payload_offset != 0 ||
+            evt->data_len != evt->payload_len) {
+            break;
+        }
+        if (evt->op_code == 0x01) {
             handle_control(evt->data_ptr, evt->data_len);
+        } else if (evt->op_code == 0x02) {
+            handle_downlink((const uint8_t *)evt->data_ptr, evt->data_len);
         }
         break;
     default:
@@ -188,9 +371,9 @@ static bool ensure_connected(void)
     const esp_websocket_client_config_t cfg = {
         .uri = CONFIG_VOICE_BRIDGE_URI,
         .disable_auto_reconnect = true,
-        .network_timeout_ms = 4000,
-        .buffer_size = 2048,
-        .task_stack = 6144,
+        .network_timeout_ms = 8000,
+        .buffer_size = 4096,
+        .task_stack = 8192,
     };
     s_rt.ws = esp_websocket_client_init(&cfg);
     if (s_rt.ws == NULL) {
@@ -208,7 +391,7 @@ static bool ensure_connected(void)
         return false;
     }
     char hello[256];
-    if (voice_hello_json(hello, sizeof(hello), CONFIG_VOICE_DEVICE_ID, "phase-2c-c1") <= 0 ||
+    if (voice_hello_json(hello, sizeof(hello), CONFIG_VOICE_DEVICE_ID, "phase-2c-c2") <= 0 ||
         !send_text(hello)) {
         close_ws();
         return false;
@@ -283,6 +466,12 @@ static bool run_utterance(void)
     s_rt.bytes_sent = 0;
     s_rt.first_frame_us = 0;
     s_rt.speech_start_us = esp_timer_get_time();
+    s_rt.speech_end_us = 0;
+    if (s_rt.play != PLAY_IDLE) {
+        finish_playback("new_utterance");
+    } else {
+        reset_playback();
+    }
     if (voice_control_json(msg, sizeof(msg), "speech_start", s_rt.conversation_id, NULL) <= 0 ||
         !send_text(msg)) {
         printf("PHASE2C_C1 talk_fail reason=speech_start\n");
@@ -306,6 +495,7 @@ static bool run_utterance(void)
     flush_queue();
     voice_control_json(msg, sizeof(msg), "speech_end", s_rt.conversation_id, NULL);
     send_text(msg);
+    s_rt.speech_end_us = esp_timer_get_time();
     const int64_t now = esp_timer_get_time();
     printf("PHASE2C_C1 talk_done cid=%lu frames=%lu bytes=%lu drop=%lu drop_total=%lu "
            "qpeak=%lu open_to_first_ms=%ld capture_ms=%ld\n",
@@ -437,6 +627,11 @@ static void audio_task(void *arg)
     while (true) {
         if (audio_owner_should_yield(AUDIO_OWNER_VOICE)) {
             s_rt.speaking = false;
+            if (s_rt.play != PLAY_IDLE) {
+                finish_playback("yield");
+            } else {
+                reset_playback();
+            }
             release_audio_path(&aec);
             /* Give the requesting owner a clear window to take ownership;
              * re-grabbing in a tight loop would starve it. */
@@ -459,7 +654,45 @@ static void audio_task(void *arg)
             continue;
         }
         aec_process(aec, mic0, ref, out);
-        audio_hw_write(silence, chunk);
+        int16_t play_pcm[1024];
+        const int16_t *tx = silence;
+        play_state_t play = s_rt.play;
+        if (play == PLAY_BUFFERING) {
+            int ready = 0;
+            if (xSemaphoreTake(s_rt.mu, pdMS_TO_TICKS(5)) == pdTRUE) {
+                ready = voice_rxq_ready(s_rt.rxq);
+                xSemaphoreGive(s_rt.mu);
+            }
+            if (ready) {
+                s_rt.play = PLAY_ACTIVE;
+                play = PLAY_ACTIVE;
+            }
+        }
+        if ((play == PLAY_ACTIVE || play == PLAY_DRAINING) && chunk <= 1024) {
+            int n = 0;
+            if (xSemaphoreTake(s_rt.mu, pdMS_TO_TICKS(5)) == pdTRUE) {
+                n = voice_rxq_pop_pcm(s_rt.rxq, play_pcm, chunk);
+                xSemaphoreGive(s_rt.mu);
+            }
+            if (n < chunk) {
+                memset(play_pcm + n, 0, (size_t)(chunk - n) * sizeof(int16_t));
+                if (play == PLAY_ACTIVE) {
+                    s_rt.play_underrun++;
+                }
+                if (play == PLAY_DRAINING && n == 0) {
+                    finish_playback("drained");
+                }
+            }
+            if (n > 0) {
+                const uint32_t peak = pcm_peak(play_pcm, n);
+                if (peak > s_rt.play_peak) {
+                    s_rt.play_peak = peak;
+                }
+                s_rt.samples_play += (uint32_t)n;
+                tx = play_pcm;
+            }
+        }
+        audio_hw_write(tx, chunk);
         if (s_rt.speaking) {
             for (int i = 0; i < chunk; i++) {
                 acc[acc_n++] = out[i];
@@ -504,15 +737,21 @@ esp_err_t voice_runtime_start(void)
         if (s_rt.txq != NULL) {
             voice_txq_init(s_rt.txq);
         }
+        s_rt.rxq = heap_caps_calloc(1, sizeof(*s_rt.rxq), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+        if (s_rt.rxq != NULL) {
+            voice_rxq_init(s_rt.rxq);
+        }
+        s_rt.rx_seq_seen = -1;
     }
-    ESP_RETURN_ON_FALSE(s_rt.events != NULL && s_rt.mu != NULL && s_rt.txq != NULL,
+    ESP_RETURN_ON_FALSE(s_rt.events != NULL && s_rt.mu != NULL && s_rt.txq != NULL &&
+                            s_rt.rxq != NULL,
                         ESP_ERR_NO_MEM, TAG, "sync");
     BaseType_t ok = xTaskCreate(audio_task, "voice_audio", AUDIO_TASK_STACK, NULL,
                                 AUDIO_TASK_PRIO, NULL);
     ESP_RETURN_ON_FALSE(ok == pdPASS, ESP_FAIL, TAG, "audio task");
     ok = xTaskCreate(net_task, "voice_net", NET_TASK_STACK, NULL, NET_TASK_PRIO, NULL);
     ESP_RETURN_ON_FALSE(ok == pdPASS, ESP_FAIL, TAG, "net task");
-    ESP_LOGI(TAG, "C1 runtime ready uri=%s", CONFIG_VOICE_BRIDGE_URI);
+    ESP_LOGI(TAG, "C2 runtime ready uri=%s", CONFIG_VOICE_BRIDGE_URI);
     return ESP_OK;
 }
 

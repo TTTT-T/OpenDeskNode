@@ -91,6 +91,11 @@ class C0FixtureTests(unittest.TestCase):
         self.assertGreater(len(frames), 0)
         self.assertEqual(frames[0]["conversation_id"], cid)
         self.assertEqual(len(frames[0]["pcm"]), FRAME_BYTES)
+        last = self.app.state.bridge.get("last_metrics") or {}
+        self.assertGreater(last.get("playback_starts", 0), 0)
+        self.assertGreater(last.get("playback_ends", 0), 0)
+        self.assertGreater(last.get("downlink_peak", 0), 0)
+        self.assertGreater(last.get("downlink_frames", 0), 0)
 
     def test_interrupt_cancels_talk_output(self):
         with self.client.websocket_connect("/voice/v0") as ws:

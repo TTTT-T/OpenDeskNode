@@ -105,6 +105,81 @@ int voice_txq_count(const voice_txq_t *q)
     return q != NULL ? (int)q->count : 0;
 }
 
+void voice_rxq_init(voice_rxq_t *q)
+{
+    if (q == NULL) {
+        return;
+    }
+    memset(q, 0, sizeof(*q));
+}
+
+int voice_rxq_push_pcm(voice_rxq_t *q, const int16_t *pcm, int samples)
+{
+    if (q == NULL || pcm == NULL || samples <= 0) {
+        return -1;
+    }
+    /* Drop-newest: keep already-queued playback contiguous. Realtime can burst
+     * several seconds faster than the speaker; skipping the tail is better than
+     * deleting the next samples to play. */
+    if ((int)q->count + samples > VOICE_RXQ_SAMPLES) {
+        q->dropped_frames += (uint32_t)((samples + VOICE_SAMPLES_PER_FRAME - 1) /
+                                        VOICE_SAMPLES_PER_FRAME);
+        return -2;
+    }
+    int tail = ((int)q->head + (int)q->count) % VOICE_RXQ_SAMPLES;
+    int first = VOICE_RXQ_SAMPLES - tail;
+    if (samples <= first) {
+        memcpy(q->samples + tail, pcm, (size_t)samples * sizeof(int16_t));
+    } else {
+        memcpy(q->samples + tail, pcm, (size_t)first * sizeof(int16_t));
+        memcpy(q->samples, pcm + first, (size_t)(samples - first) * sizeof(int16_t));
+    }
+    q->count += (uint32_t)samples;
+    if (q->count > q->peak_count) {
+        q->peak_count = q->count;
+    }
+    q->pushed_frames++;
+    return 0;
+}
+
+int voice_rxq_pop_pcm(voice_rxq_t *q, int16_t *pcm, int samples)
+{
+    if (q == NULL || pcm == NULL || samples <= 0 || q->count == 0) {
+        return 0;
+    }
+    const int n = samples < (int)q->count ? samples : (int)q->count;
+    int first = VOICE_RXQ_SAMPLES - (int)q->head;
+    if (n <= first) {
+        memcpy(pcm, q->samples + q->head, (size_t)n * sizeof(int16_t));
+    } else {
+        memcpy(pcm, q->samples + q->head, (size_t)first * sizeof(int16_t));
+        memcpy(pcm + first, q->samples, (size_t)(n - first) * sizeof(int16_t));
+    }
+    q->head = (q->head + (uint32_t)n) % VOICE_RXQ_SAMPLES;
+    q->count -= (uint32_t)n;
+    q->popped_samples += (uint32_t)n;
+    return n;
+}
+
+void voice_rxq_clear(voice_rxq_t *q)
+{
+    if (q == NULL) {
+        return;
+    }
+    q->head = 0;
+    q->count = 0;
+}
+
+int voice_rxq_count(const voice_rxq_t *q)
+{
+    return q != NULL ? (int)q->count : 0;
+}
+
+int voice_rxq_ready(const voice_rxq_t *q)
+{
+    return q != NULL && q->count >= VOICE_RXQ_PREBUFFER_SAMPLES;
+}
+
 int voice_hello_json(char *out, size_t out_len, const char *device_id,
                      const char *fw_version)
 {

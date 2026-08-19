@@ -149,6 +149,8 @@ queue depth、underrun/overrun。
 3. C1：**已真机验收 PASS**（2026-08-19，4 轮真人中文 `transcript.done`、
    2A 回归、ownership 让权→归还→再上行、股票链全程正常；报告见
    `phase-reports/phase-02c-c1-live-acceptance.md`）。验收期修复：
-   ownership 饥饿、Talk reader 存活、断线 conversation 失效。C2 未开始。
-4. C2 下行播放 → C3 barge-in → C4 多轮 → C5 恢复。
+   ownership 饥饿、Talk reader 存活、断线 conversation 失效。
+4. C2：**已真机验收 PASS**（2026-08-19，见
+   `phase-reports/phase-02c-c2-live-acceptance.md`）。→ C3 barge-in →
+   C4 多轮 → C5 恢复。
 5. Wake PoC 不阻塞；做不完拆 Phase 2C.x。

@@ -142,13 +142,13 @@ app_main
   ├─ stock_service_start → stock_svc task（16384 B 栈：view、Wi-Fi 就绪、
   │  约 10 秒 Gateway 轮询、解析/降级、刷新与指标日志）
   ├─ audio_selftest_start → 诊断任务（不默认占用 I2S；双击 BOOT 才抢权）
-  ├─ voice_runtime_start → 默认音频 RX/TX owner + Bridge 上行
+  ├─ voice_runtime_start → 默认音频 RX/TX owner + Bridge 上下行
   ├─ board_button_init → 单击 Talk / 双击 2A 诊断
   └─ network_init → NVS + netif + event loop → Wi-Fi station
 
-产品运行时只有一个音频 RX/TX owner（`audio_owner`）。Voice Runtime 是
-默认 owner；Phase 2A selftest 仍可调用，但必须先让 Voice 让权。C1 只做
-ESP32 → Bridge 上行，不做下行播放 / barge-in / 多轮 / C5 重连。
+ 产品运行时只有一个音频 RX/TX owner（`audio_owner`）。Voice Runtime 是
+ 默认 owner；Phase 2A selftest 仍可调用，但必须先让 Voice 让权。C1 上行
+ + C2 下行播放（ES8311）已真机验收。C3 barge-in / C4 多轮 / C5 重连尚未开始。
 ```
 
 Phase 1E 仍把股票业务限制在 `components/stock/`：`stock_model.c` 与测试用

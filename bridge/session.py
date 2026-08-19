@@ -55,6 +55,9 @@ class DeviceSession:
             "downlink_bytes": 0,
             "uplink_frames": 0,
             "downlink_frames": 0,
+            "playback_starts": 0,
+            "playback_ends": 0,
+            "downlink_peak": 0,
             "dropped_old": 0,
             "seq_dup": 0,
             "seq_gap": 0,
@@ -68,6 +71,7 @@ class DeviceSession:
             "last_user_transcript": None,
         }
         self._uplink_pcm = bytearray()
+        self._downlink_pcm = bytearray()
         self._up = upsample_16k_to_24k()
         self._down = downsample_24k_to_16k()
         self._down_frames = FrameSplitter()
@@ -210,6 +214,11 @@ class DeviceSession:
                 await self._emit_down_frame(padded, FLAG_UTTERANCE_END)
             if self.playing:
                 self.playing = False
+                self.metrics["playback_ends"] += 1
+                try:
+                    self.dump_downlink_wav("artifacts/phase-02c/c2-downlink.wav")
+                except OSError:
+                    LOGGER.warning("could not dump downlink wav")
                 await self._send_text(
                     control("playback_end", conversation_id=self.conversation_id)
                 )
@@ -219,6 +228,7 @@ class DeviceSession:
             self._down_frames.reset()
             if self.playing:
                 self.playing = False
+                self.metrics["playback_ends"] += 1
                 await self._send_text(
                     control("playback_end", conversation_id=self.conversation_id)
                 )
@@ -262,6 +272,7 @@ class DeviceSession:
         self._down_frames.reset()
         self.down_seq = 0
         self.playing = False
+        self._downlink_pcm = bytearray()
         await self._send_text(conversation_opened(self.conversation_id))
 
     def dump_uplink_wav(self, path: str) -> None:
@@ -275,6 +286,18 @@ class DeviceSession:
             handle.setsampwidth(2)
             handle.setframerate(16000)
             handle.writeframes(bytes(self._uplink_pcm))
+
+    def dump_downlink_wav(self, path: str) -> None:
+        import wave
+        from pathlib import Path
+
+        dest = Path(path)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        with wave.open(str(dest), "wb") as handle:
+            handle.setnchannels(1)
+            handle.setsampwidth(2)
+            handle.setframerate(16000)
+            handle.writeframes(bytes(self._downlink_pcm))
 
     async def _commit_turn(self) -> None:
         if not self.talk_session_id or self.commit_silence_ms <= 0:
@@ -294,6 +317,7 @@ class DeviceSession:
         self._down_frames.reset()
         if self.playing:
             self.playing = False
+            self.metrics["playback_ends"] += 1
             await self._send_text(
                 control("playback_end", conversation_id=self.conversation_id)
             )
@@ -334,10 +358,19 @@ class DeviceSession:
             flags = 0
             if not self.playing:
                 self.playing = True
+                self.metrics["playback_starts"] += 1
+                self._downlink_pcm = bytearray()
                 await self._send_text(
                     control("playback_start", conversation_id=self.conversation_id)
                 )
                 flags |= FLAG_UTTERANCE_START
+            peak = max(
+                abs(int.from_bytes(frame[i : i + 2], "little", signed=True))
+                for i in range(0, len(frame), 2)
+            )
+            self.metrics["downlink_peak"] = max(
+                int(self.metrics.get("downlink_peak") or 0), peak
+            )
             await self._emit_down_frame(frame, flags)
 
     async def _emit_down_frame(self, pcm: bytes, flags: int) -> None:
@@ -350,4 +383,5 @@ class DeviceSession:
         )
         self.down_seq += 1
         self.metrics["downlink_frames"] += 1
+        self._downlink_pcm.extend(pcm)
         await self._send_bytes(frame)

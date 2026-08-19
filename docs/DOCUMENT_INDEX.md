@@ -70,6 +70,8 @@ archive/*                 被替代的历史背景（默认不加载）
 | [phase-01e-live-stock-dashboard.md](phase-reports/phase-01e-live-stock-dashboard.md) | [PHASE1E_LIVE_STOCK_DASHBOARD.md](PHASE1E_LIVE_STOCK_DASHBOARD.md) |
 | [phase-02a-voice-hardware-bringup.md](phase-reports/phase-02a-voice-hardware-bringup.md) | [PHASE2A_REPORT.md](PHASE2A_REPORT.md) |
 | [phase-02b-realtime-validation.md](phase-reports/phase-02b-realtime-validation.md) | [PHASE2B_REALTIME_VALIDATION_REPORT.md](PHASE2B_REALTIME_VALIDATION_REPORT.md) |
+| [phase-02c-c1-live-acceptance.md](phase-reports/phase-02c-c1-live-acceptance.md) | — |
+| [phase-02c-c2-live-acceptance.md](phase-reports/phase-02c-c2-live-acceptance.md) | — |
 
 ## D. Historical Phase Definition（当时计划，不是当前架构源）
 
