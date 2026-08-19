@@ -64,12 +64,15 @@ class DeviceSession:
             "seq_reorder": 0,
             "commit_silence_bytes": 0,
             "uplink_peak": 0,
+            "interrupts": 0,
+            "dropped_after_interrupt": 0,
             # Session-scoped Realtime user transcripts (talk transcript.* events
             # that passed the sessionId filter); each entry is
             # {"text", "talkType", "ts"}.
             "user_transcripts": [],
             "last_user_transcript": None,
         }
+        self.suppress_downlink = False
         self._uplink_pcm = bytearray()
         self._downlink_pcm = bytearray()
         self._up = upsample_16k_to_24k()
@@ -108,9 +111,11 @@ class DeviceSession:
         if kind == "speech_start":
             self._require_conversation(message)
             self.uplink_seq_seen = -1
+            self._up.reset()
             return
         if kind == "speech_end":
             self._require_conversation(message)
+            self.suppress_downlink = False
             await self._commit_turn()
             try:
                 self.dump_uplink_wav("artifacts/phase-02c/c1-uplink.wav")
@@ -272,6 +277,7 @@ class DeviceSession:
         self._down_frames.reset()
         self.down_seq = 0
         self.playing = False
+        self.suppress_downlink = False
         self._downlink_pcm = bytearray()
         await self._send_text(conversation_opened(self.conversation_id))
 
@@ -313,6 +319,8 @@ class DeviceSession:
         self.metrics["commit_silence_bytes"] += len(silence)
 
     async def _interrupt(self) -> None:
+        self.suppress_downlink = True
+        self.metrics["interrupts"] += 1
         self._down.reset()
         self._down_frames.reset()
         if self.playing:
@@ -351,6 +359,9 @@ class DeviceSession:
 
     async def _send_downlink(self, pcm16: bytes) -> None:
         if not pcm16:
+            return
+        if self.suppress_downlink:
+            self.metrics["dropped_after_interrupt"] += 1
             return
         self.metrics["downlink_bytes"] += len(pcm16)
         frames = self._down_frames.push(pcm16)

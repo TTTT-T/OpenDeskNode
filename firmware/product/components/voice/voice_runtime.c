@@ -18,6 +18,7 @@
 #include "freertos/task.h"
 #include "network.h"
 #include "voice_protocol.h"
+#include "voice_vad.h"
 
 static const char *TAG = "voice";
 
@@ -50,6 +51,12 @@ typedef struct {
     volatile bool speaking;
     volatile bool helloed;
     volatile play_state_t play;
+    volatile bool accept_downlink;
+    volatile bool barge_pending;
+    volatile bool stop_play;
+    volatile bool fade_in;
+    volatile int vol_req;
+    voice_vad_t vad;
     int32_t rx_seq_seen;
     uint32_t frames_sent;
     uint32_t bytes_sent;
@@ -59,6 +66,10 @@ typedef struct {
     uint32_t play_underrun;
     uint32_t play_peak;
     uint32_t rx_drop_busy;
+    uint32_t rx_drop_barge;
+    uint32_t residual_peak;
+    uint32_t overlap_residual;
+    uint32_t overlap_play;
     uint32_t rx_drop_cid;
     uint32_t rx_dup;
     uint32_t rx_gap;
@@ -117,7 +128,19 @@ static void log_metrics(const char *label)
            (unsigned long)(s_rt.samples_play / VOICE_SAMPLES_PER_FRAME),
            (unsigned long)s_rt.play_underrun,
            (unsigned long)s_rt.play_peak, (unsigned long)s_rt.rx_drop_busy);
+    printf("PHASE2C_C3 %s barge_pending=%d accept_rx=%d barge_drop=%lu residual=%lu "
+           "play_rms=%lu\n",
+           label, s_rt.barge_pending, s_rt.accept_downlink,
+           (unsigned long)s_rt.rx_drop_barge, (unsigned long)s_rt.overlap_residual,
+           (unsigned long)s_rt.overlap_play);
     fflush(stdout);
+}
+
+static void fade_from_zero(int16_t *pcm, int n)
+{
+    for (int i = 0; i < n; i++) {
+        pcm[i] = (int16_t)((int32_t)pcm[i] * i / n);
+    }
 }
 
 static uint32_t pcm_peak(const int16_t *pcm, int samples)
@@ -139,6 +162,8 @@ static void reset_playback_locked(void)
     }
     s_rt.play = PLAY_IDLE;
     s_rt.rx_seq_seen = -1;
+    s_rt.fade_in = false;
+    voice_vad_reset(&s_rt.vad);
 }
 
 static void reset_playback(void)
@@ -158,7 +183,13 @@ static void begin_playback(void)
         xSemaphoreGive(s_rt.mu);
     }
     s_rt.play = PLAY_BUFFERING;
+    s_rt.accept_downlink = true;
+    s_rt.fade_in = true;
     s_rt.rx_seq_seen = -1;
+    s_rt.residual_peak = 0;
+    s_rt.overlap_residual = 0;
+    s_rt.overlap_play = 0;
+    voice_vad_reset(&s_rt.vad);
     s_rt.frames_rx = 0;
     s_rt.frames_play = 0;
     s_rt.samples_play = 0;
@@ -166,6 +197,7 @@ static void begin_playback(void)
     s_rt.play_peak = 0;
     s_rt.first_rx_us = 0;
     s_rt.play_start_us = esp_timer_get_time();
+    s_rt.vol_req = 70;
     printf("PHASE2C_C2 playback_start cid=%lu\n", (unsigned long)s_rt.conversation_id);
     fflush(stdout);
 }
@@ -187,10 +219,27 @@ static void finish_playback(const char *why)
                ? (long)((s_rt.first_rx_us - s_rt.speech_end_us) / 1000)
                : -1,
            s_rt.play_start_us > 0 ? (long)((now - s_rt.play_start_us) / 1000) : -1,
-           (unsigned long)s_rt.rx_gap, (unsigned long)s_rt.rx_dup,
-           (unsigned long)s_rt.rx_reorder);
+            (unsigned long)s_rt.rx_gap, (unsigned long)s_rt.rx_dup,
+            (unsigned long)s_rt.rx_reorder);
+    printf("PHASE2C_C3 play_done why=%s residual_peak=%lu residual=%lu play_rms=%lu "
+           "barge_drop=%lu\n",
+           why, (unsigned long)s_rt.residual_peak,
+           (unsigned long)s_rt.overlap_residual, (unsigned long)s_rt.overlap_play,
+           (unsigned long)s_rt.rx_drop_barge);
     fflush(stdout);
     reset_playback();
+}
+
+static void local_stop_playback(const char *why)
+{
+    s_rt.vol_req = 0;
+    if (s_rt.play == PLAY_IDLE) {
+        s_rt.accept_downlink = false;
+        voice_vad_reset(&s_rt.vad);
+        return;
+    }
+    s_rt.accept_downlink = false;
+    finish_playback(why);
 }
 
 static bool send_text(const char *json)
@@ -228,9 +277,7 @@ static void handle_control(const char *text, int len)
     } else if (strcmp(type->valuestring, "playback_start") == 0) {
         begin_playback();
     } else if (strcmp(type->valuestring, "playback_end") == 0) {
-        if (s_rt.play == PLAY_IDLE) {
-            finish_playback("empty");
-        } else {
+        if (s_rt.play != PLAY_IDLE) {
             s_rt.play = PLAY_DRAINING;
         }
     } else if (strcmp(type->valuestring, "conversation_end") == 0) {
@@ -273,6 +320,10 @@ static void handle_downlink(const uint8_t *data, int len)
     }
     if (s_rt.conversation_id == 0 || view.conversation_id != s_rt.conversation_id) {
         s_rt.rx_drop_cid++;
+        return;
+    }
+    if (!s_rt.accept_downlink) {
+        s_rt.rx_drop_barge++;
         return;
     }
     if (s_rt.rx_seq_seen >= 0) {
@@ -391,7 +442,7 @@ static bool ensure_connected(void)
         return false;
     }
     char hello[256];
-    if (voice_hello_json(hello, sizeof(hello), CONFIG_VOICE_DEVICE_ID, "phase-2c-c2") <= 0 ||
+    if (voice_hello_json(hello, sizeof(hello), CONFIG_VOICE_DEVICE_ID, "phase-2c-c3") <= 0 ||
         !send_text(hello)) {
         close_ws();
         return false;
@@ -432,6 +483,26 @@ static int flush_queue(void)
     return sent;
 }
 
+static bool send_interrupt(const char *why)
+{
+    char msg[128];
+    if (s_rt.conversation_id == 0) {
+        return false;
+    }
+    s_rt.accept_downlink = false;
+    s_rt.barge_pending = false;
+    s_rt.stop_play = false;
+    if (voice_control_json(msg, sizeof(msg), "interrupt", s_rt.conversation_id, NULL) <= 0 ||
+        !send_text(msg)) {
+        return false;
+    }
+    printf("PHASE2C_C3 interrupt_sent cid=%lu why=%s residual=%lu play_rms=%lu\n",
+           (unsigned long)s_rt.conversation_id, why,
+           (unsigned long)s_rt.overlap_residual, (unsigned long)s_rt.overlap_play);
+    fflush(stdout);
+    return true;
+}
+
 static bool run_utterance(void)
 {
     if (!ensure_connected()) {
@@ -467,10 +538,15 @@ static bool run_utterance(void)
     s_rt.first_frame_us = 0;
     s_rt.speech_start_us = esp_timer_get_time();
     s_rt.speech_end_us = 0;
+    const bool barging = s_rt.barge_pending || s_rt.play != PLAY_IDLE;
     if (s_rt.play != PLAY_IDLE) {
-        finish_playback("new_utterance");
+        local_stop_playback("barge_in");
     } else {
         reset_playback();
+    }
+    if (barging && !send_interrupt("utterance")) {
+        printf("PHASE2C_C3 interrupt_fail cid=%lu\n", (unsigned long)s_rt.conversation_id);
+        fflush(stdout);
     }
     if (voice_control_json(msg, sizeof(msg), "speech_start", s_rt.conversation_id, NULL) <= 0 ||
         !send_text(msg)) {
@@ -479,7 +555,7 @@ static bool run_utterance(void)
         return false;
     }
     s_rt.speaking = true;
-    const TickType_t deadline = xTaskGetTickCount() + pdMS_TO_TICKS(CONFIG_VOICE_UTTERANCE_MS);
+    TickType_t deadline = xTaskGetTickCount() + pdMS_TO_TICKS(CONFIG_VOICE_UTTERANCE_MS);
     while (xTaskGetTickCount() < deadline && s_rt.speaking) {
         flush_queue();
         if (!esp_websocket_client_is_connected(s_rt.ws)) {
@@ -487,6 +563,23 @@ static bool run_utterance(void)
             printf("PHASE2C_C1 talk_fail reason=disconnect\n");
             fflush(stdout);
             return false;
+        }
+        if (s_rt.barge_pending) {
+            send_interrupt("mid_utterance");
+            if (xSemaphoreTake(s_rt.mu, pdMS_TO_TICKS(50)) == pdTRUE) {
+                voice_txq_clear(s_rt.txq);
+                xSemaphoreGive(s_rt.mu);
+            }
+            s_rt.seq = 0;
+            s_rt.frames_sent = 0;
+            s_rt.bytes_sent = 0;
+            s_rt.first_frame_us = 0;
+            s_rt.speech_start_us = esp_timer_get_time();
+            if (voice_control_json(msg, sizeof(msg), "speech_start", s_rt.conversation_id,
+                                   NULL) > 0) {
+                send_text(msg);
+            }
+            deadline = xTaskGetTickCount() + pdMS_TO_TICKS(CONFIG_VOICE_UTTERANCE_MS);
         }
         vTaskDelay(pdMS_TO_TICKS(10));
     }
@@ -627,8 +720,10 @@ static void audio_task(void *arg)
     while (true) {
         if (audio_owner_should_yield(AUDIO_OWNER_VOICE)) {
             s_rt.speaking = false;
+            s_rt.stop_play = false;
+            s_rt.barge_pending = false;
             if (s_rt.play != PLAY_IDLE) {
-                finish_playback("yield");
+                local_stop_playback("yield");
             } else {
                 reset_playback();
             }
@@ -649,6 +744,10 @@ static void audio_task(void *arg)
             acc_n = 0;
             continue;
         }
+        if (s_rt.vol_req >= 0) {
+            audio_hw_set_output_volume(s_rt.vol_req);
+            s_rt.vol_req = -1;
+        }
         if (audio_hw_read(mic0, ref, mic1, chunk) != ESP_OK) {
             vTaskDelay(pdMS_TO_TICKS(5));
             continue;
@@ -656,7 +755,40 @@ static void audio_task(void *arg)
         aec_process(aec, mic0, ref, out);
         int16_t play_pcm[1024];
         const int16_t *tx = silence;
+        if (s_rt.stop_play && s_rt.play != PLAY_IDLE) {
+            local_stop_playback("button");
+            s_rt.stop_play = false;
+            s_rt.barge_pending = true;
+        }
         play_state_t play = s_rt.play;
+        const int64_t now_us = esp_timer_get_time();
+        const bool holdoff_ok =
+            play == PLAY_ACTIVE && s_rt.play_start_us > 0 &&
+            (now_us - s_rt.play_start_us) >= (int64_t)VOICE_BARGE_HOLDOFF_MS * 1000 &&
+            (s_rt.speech_end_us == 0 ||
+             (now_us - s_rt.speech_end_us) >= (int64_t)VOICE_BARGE_POST_SPEECH_MS * 1000);
+        if (play == PLAY_ACTIVE) {
+            const uint32_t residual = voice_pcm_mean_abs(out, chunk);
+            if (holdoff_ok &&
+                voice_vad_feed(&s_rt.vad, residual, s_rt.overlap_play, false) &&
+                voice_barge_should_stop(true, true, true)) {
+                local_stop_playback("vad");
+                s_rt.barge_pending = true;
+                s_rt.stop_play = false;
+                if (!s_rt.speaking && s_rt.events != NULL) {
+                    xEventGroupSetBits(s_rt.events, TALK_BIT);
+                }
+                printf("PHASE2C_C3 barge_in why=vad cid=%lu energy=%lu play_rms=%lu floor=%lu\n",
+                       (unsigned long)s_rt.conversation_id, (unsigned long)s_rt.vad.last_abs,
+                       (unsigned long)s_rt.overlap_play, (unsigned long)s_rt.vad.floor_abs);
+                fflush(stdout);
+                play = PLAY_IDLE;
+            } else if (!holdoff_ok) {
+                voice_vad_feed(&s_rt.vad, residual, s_rt.overlap_play, true);
+            }
+        } else {
+            voice_vad_reset(&s_rt.vad);
+        }
         if (play == PLAY_BUFFERING) {
             int ready = 0;
             if (xSemaphoreTake(s_rt.mu, pdMS_TO_TICKS(5)) == pdTRUE) {
@@ -665,6 +797,7 @@ static void audio_task(void *arg)
             }
             if (ready) {
                 s_rt.play = PLAY_ACTIVE;
+                s_rt.fade_in = true;
                 play = PLAY_ACTIVE;
             }
         }
@@ -684,12 +817,32 @@ static void audio_task(void *arg)
                 }
             }
             if (n > 0) {
+                if (s_rt.fade_in) {
+                    fade_from_zero(play_pcm, n);
+                    s_rt.fade_in = false;
+                }
                 const uint32_t peak = pcm_peak(play_pcm, n);
                 if (peak > s_rt.play_peak) {
                     s_rt.play_peak = peak;
                 }
                 s_rt.samples_play += (uint32_t)n;
                 tx = play_pcm;
+            }
+        }
+        if (play == PLAY_ACTIVE || play == PLAY_DRAINING || s_rt.speaking) {
+            const uint32_t residual = voice_pcm_mean_abs(out, chunk);
+            const uint32_t play_rms = voice_pcm_mean_abs(tx, chunk);
+            s_rt.overlap_residual = residual;
+            s_rt.overlap_play = play_rms;
+            if (residual > s_rt.residual_peak) {
+                s_rt.residual_peak = residual;
+            }
+            if (play == PLAY_ACTIVE && (s_rt.samples_play / chunk % 50) == 0) {
+                printf("PHASE2C_C3 overlap residual=%lu play_rms=%lu floor=%lu onset=%lu speaking=%d\n",
+                       (unsigned long)residual, (unsigned long)play_rms,
+                       (unsigned long)s_rt.vad.floor_abs, (unsigned long)s_rt.vad.onset,
+                       s_rt.speaking);
+                fflush(stdout);
             }
         }
         audio_hw_write(tx, chunk);
@@ -742,6 +895,9 @@ esp_err_t voice_runtime_start(void)
             voice_rxq_init(s_rt.rxq);
         }
         s_rt.rx_seq_seen = -1;
+        s_rt.accept_downlink = true;
+        s_rt.vol_req = -1;
+        voice_vad_init(&s_rt.vad);
     }
     ESP_RETURN_ON_FALSE(s_rt.events != NULL && s_rt.mu != NULL && s_rt.txq != NULL &&
                             s_rt.rxq != NULL,
@@ -751,14 +907,22 @@ esp_err_t voice_runtime_start(void)
     ESP_RETURN_ON_FALSE(ok == pdPASS, ESP_FAIL, TAG, "audio task");
     ok = xTaskCreate(net_task, "voice_net", NET_TASK_STACK, NULL, NET_TASK_PRIO, NULL);
     ESP_RETURN_ON_FALSE(ok == pdPASS, ESP_FAIL, TAG, "net task");
-    ESP_LOGI(TAG, "C2 runtime ready uri=%s", CONFIG_VOICE_BRIDGE_URI);
+    ESP_LOGI(TAG, "C3 runtime ready uri=%s", CONFIG_VOICE_BRIDGE_URI);
     return ESP_OK;
 }
 
 void voice_runtime_request_talk(void)
 {
+    if (s_rt.play != PLAY_IDLE) {
+        s_rt.stop_play = true;
+        s_rt.barge_pending = true;
+        if (s_rt.speaking) {
+            ESP_LOGI(TAG, "manual barge during capture");
+            return;
+        }
+    }
     if (s_rt.events != NULL) {
         xEventGroupSetBits(s_rt.events, TALK_BIT);
-        ESP_LOGI(TAG, "manual talk requested");
+        ESP_LOGI(TAG, "manual talk requested play=%d", (int)s_rt.play);
     }
 }

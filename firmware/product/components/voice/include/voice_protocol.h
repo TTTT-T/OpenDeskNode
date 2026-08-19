@@ -22,8 +22,8 @@
 #define VOICE_TXQ_DROP_LIMIT (1500 / VOICE_FRAME_MS)
 #define VOICE_RXQ_FRAMES 400
 #define VOICE_RXQ_SAMPLES (VOICE_RXQ_FRAMES * VOICE_SAMPLES_PER_FRAME)
-/* C2 starting prebuffer only; 6 frames x 20 ms = 120 ms. Not a frozen product
- * constant — C3 may retune after barge-in measurement. */
+/* C2 starting prebuffer only; 6 frames x 20 ms = 120 ms. C3 kept this value
+ * and added a one-chunk fade-in; retune only with barge-in measurements. */
 #define VOICE_RXQ_PREBUFFER_FRAMES 6
 #define VOICE_RXQ_PREBUFFER_SAMPLES (VOICE_RXQ_PREBUFFER_FRAMES * VOICE_SAMPLES_PER_FRAME)
 

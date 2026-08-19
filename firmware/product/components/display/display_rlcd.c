@@ -187,11 +187,21 @@ static void rlcd_flush_cb(lv_display_t *display, const lv_area_t *area, uint8_t 
     static const uint8_t column_range[] = {0x12, 0x2a};
     static const uint8_t page_range[] = {0x00, 0xc7};
     const int64_t flush_started_us = esp_timer_get_time();
-    ESP_ERROR_CHECK(rlcd_send_sequence(0x2a, column_range, sizeof(column_range)));
-    ESP_ERROR_CHECK(rlcd_send_sequence(0x2b, page_range, sizeof(page_range)));
-    ESP_ERROR_CHECK(rlcd_send_command(0x2c));
-    ESP_ERROR_CHECK(esp_lcd_panel_io_tx_color(s_rlcd.io, -1, s_rlcd.framebuffer, RLCD_FRAMEBUFFER_SIZE));
-    record_flush_us(esp_timer_get_time() - flush_started_us);
+    esp_err_t err = rlcd_send_sequence(0x2a, column_range, sizeof(column_range));
+    if (err == ESP_OK) {
+        err = rlcd_send_sequence(0x2b, page_range, sizeof(page_range));
+    }
+    if (err == ESP_OK) {
+        err = rlcd_send_command(0x2c);
+    }
+    if (err == ESP_OK) {
+        err = esp_lcd_panel_io_tx_color(s_rlcd.io, -1, s_rlcd.framebuffer, RLCD_FRAMEBUFFER_SIZE);
+    }
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "rlcd flush skipped: %s", esp_err_to_name(err));
+    } else {
+        record_flush_us(esp_timer_get_time() - flush_started_us);
+    }
     lv_display_flush_ready(display);
 }
 

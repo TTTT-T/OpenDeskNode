@@ -151,6 +151,7 @@ queue depth、underrun/overrun。
    `phase-reports/phase-02c-c1-live-acceptance.md`）。验收期修复：
    ownership 饥饿、Talk reader 存活、断线 conversation 失效。
 4. C2：**已真机验收 PASS**（2026-08-19，见
-   `phase-reports/phase-02c-c2-live-acceptance.md`）。→ C3 barge-in →
-   C4 多轮 → C5 恢复。
+   `phase-reports/phase-02c-c2-live-acceptance.md`）。C3 **已真机验收
+   PASS**（2026-08-20，见 `phase-reports/phase-02c-c3-live-acceptance.md`）。
+   → C4 多轮 → C5 恢复。
 5. Wake PoC 不阻塞；做不完拆 Phase 2C.x。

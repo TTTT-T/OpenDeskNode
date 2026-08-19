@@ -1,6 +1,6 @@
 # 文档清单与唯一真相层级
 
-最后核验：2026-08-19
+最后核验：2026-08-20
 
 本文件是仓库文档的 **inventory + canonical owner** 入口。它不替代任何
 canonical 文档的内容；只回答「这个概念该读哪一份」。
@@ -72,6 +72,7 @@ archive/*                 被替代的历史背景（默认不加载）
 | [phase-02b-realtime-validation.md](phase-reports/phase-02b-realtime-validation.md) | [PHASE2B_REALTIME_VALIDATION_REPORT.md](PHASE2B_REALTIME_VALIDATION_REPORT.md) |
 | [phase-02c-c1-live-acceptance.md](phase-reports/phase-02c-c1-live-acceptance.md) | — |
 | [phase-02c-c2-live-acceptance.md](phase-reports/phase-02c-c2-live-acceptance.md) | — |
+| [phase-02c-c3-live-acceptance.md](phase-reports/phase-02c-c3-live-acceptance.md) | — |
 
 ## D. Historical Phase Definition（当时计划，不是当前架构源）
 

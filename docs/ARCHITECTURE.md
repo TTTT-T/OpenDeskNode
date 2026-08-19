@@ -148,7 +148,8 @@ app_main
 
  产品运行时只有一个音频 RX/TX owner（`audio_owner`）。Voice Runtime 是
  默认 owner；Phase 2A selftest 仍可调用，但必须先让 Voice 让权。C1 上行
- + C2 下行播放（ES8311）已真机验收。C3 barge-in / C4 多轮 / C5 重连尚未开始。
+  + C2 下行播放（ES8311）已真机验收。C3 本地先停 barge-in 已真机验收
+  （BOOT 路径）。C4 多轮 / C5 重连尚未开始。
 ```
 
 Phase 1E 仍把股票业务限制在 `components/stock/`：`stock_model.c` 与测试用

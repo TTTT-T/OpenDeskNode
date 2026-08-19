@@ -95,7 +95,7 @@ class FakeTalkClient:
             }
         )
 
-    async def emit_output(self, session_id: str, pcm24: bytes) -> None:
+    async def emit_output_delta(self, session_id: str, pcm24: bytes) -> None:
         await self._emit(
             {
                 "type": "audio",
@@ -104,6 +104,9 @@ class FakeTalkClient:
                 "talkEvent": {"type": "output.audio.delta"},
             }
         )
+
+    async def emit_output(self, session_id: str, pcm24: bytes) -> None:
+        await self.emit_output_delta(session_id, pcm24)
         await self._emit(
             {
                 "type": "audio_done",
@@ -159,6 +162,8 @@ class GatewayTalkClient:
             "talk_event_types": [],
             "append_ok": 0,
             "append_fail": 0,
+            "cancel_ok": 0,
+            "cancel_fail": 0,
             # Entries: {"text", "sessionId", "talkType", "eventSeq", "ts"}.
             "transcripts": [],
             "texts": [],
@@ -297,7 +302,10 @@ class GatewayTalkClient:
             {"sessionId": session_id, "reason": reason},
         )
         if not response.get("ok"):
+            self.stats["cancel_fail"] += 1
             LOGGER.warning("cancelOutput rejected")
+            return
+        self.stats["cancel_ok"] += 1
 
     async def close_session(self, session_id: str) -> None:
         await self._request("talk.session.close", {"sessionId": session_id})

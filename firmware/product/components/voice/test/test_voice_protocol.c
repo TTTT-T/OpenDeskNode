@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "voice_protocol.h"
+#include "voice_vad.h"
 
 static int failures;
 
@@ -169,10 +170,59 @@ static void test_rxq_prebuffer_and_drop_newest(void)
     CHECK_TRUE(q.dropped_frames >= 1);
 }
 
+static void test_vad_silence_never_triggers(void)
+{
+    voice_vad_t vad;
+    voice_vad_init(&vad);
+    for (int i = 0; i < 10; i++) {
+        CHECK_TRUE(!voice_vad_feed(&vad, 0, 0, false));
+    }
+    CHECK_TRUE(vad.last_abs == 0);
+}
+
+static void test_vad_requires_consecutive_speech_frames(void)
+{
+    voice_vad_t vad;
+    voice_vad_init(&vad);
+    CHECK_TRUE(!voice_vad_feed(&vad, 4000, 0, false));
+    CHECK_TRUE(!voice_vad_feed(&vad, 4000, 0, false));
+    CHECK_TRUE(!voice_vad_feed(&vad, 4000, 0, false));
+    CHECK_TRUE(voice_vad_feed(&vad, 4000, 0, false));
+    voice_vad_reset(&vad);
+    CHECK_TRUE(!voice_vad_feed(&vad, 4000, 0, false));
+    CHECK_TRUE(!voice_vad_feed(&vad, 0, 0, false));
+    CHECK_TRUE(!voice_vad_feed(&vad, 4000, 0, false));
+}
+
+static void test_vad_echo_floor_blocks_residual(void)
+{
+    voice_vad_t vad;
+    voice_vad_init(&vad);
+    for (int i = 0; i < 8; i++) {
+        CHECK_TRUE(!voice_vad_feed(&vad, 500, 3000, true));
+    }
+    for (int i = 0; i < 6; i++) {
+        CHECK_TRUE(!voice_vad_feed(&vad, 500, 3000, false));
+    }
+    CHECK_TRUE(!voice_vad_feed(&vad, 1200, 3000, false));
+    CHECK_TRUE(!voice_vad_feed(&vad, 2500, 3000, false));
+    CHECK_TRUE(!voice_vad_feed(&vad, 2500, 3000, false));
+    CHECK_TRUE(!voice_vad_feed(&vad, 2500, 3000, false));
+    CHECK_TRUE(voice_vad_feed(&vad, 2500, 3000, false));
+}
+
+static void test_barge_gate(void)
+{
+    CHECK_TRUE(voice_barge_should_stop(true, true, true));
+    CHECK_TRUE(!voice_barge_should_stop(false, true, true));
+    CHECK_TRUE(!voice_barge_should_stop(true, false, true));
+    CHECK_TRUE(!voice_barge_should_stop(true, true, false));
+}
+
 static void test_hello_json(void)
 {
     char buf[256];
-    CHECK_TRUE(voice_hello_json(buf, sizeof(buf), "opendesk-a", "phase-2c-c1") > 0);
+    CHECK_TRUE(voice_hello_json(buf, sizeof(buf), "opendesk-a", "phase-2c-c3") > 0);
     CHECK_TRUE(strstr(buf, "\"type\":\"hello\"") != NULL);
     CHECK_TRUE(strstr(buf, "pcm_s16le_16k_mono") != NULL);
     CHECK_TRUE(strstr(buf, "appendAudio") == NULL);
@@ -187,6 +237,10 @@ int main(void)
     test_drop_window_resets_between_utterances();
     test_rxq_push_pop_and_wrap();
     test_rxq_prebuffer_and_drop_newest();
+    test_vad_silence_never_triggers();
+    test_vad_requires_consecutive_speech_frames();
+    test_vad_echo_floor_blocks_residual();
+    test_barge_gate();
     test_hello_json();
     if (failures) {
         printf("VOICE_PROTOCOL_HOST_TESTS_FAILED %d\n", failures);

@@ -1,6 +1,6 @@
 # 项目当前状态
 
-最后更新：2026-08-19
+最后更新：2026-08-20
 
 本文件是当前阶段与状态的唯一入口。文档归属见 [DOCUMENT_INDEX.md](DOCUMENT_INDEX.md)。
 新会话从这里定位当前 Phase，再按需读取指向的 canonical 文档；不为背景加载
@@ -37,13 +37,17 @@ PASS、audio ownership 让权→归还→再上行成功、股票链全程正常
 [phase-02c-c2-live-acceptance.md](phase-reports/phase-02c-c2-live-acceptance.md)）：
 Realtime 回答经 ES8311 可听，frames_rx≈frames_play、underrun=0、drop=0，
 股票链全程正常。验收中修复采集窗丢下行与 2 s drop-oldest 卡顿。
-不得破坏 Phase 2A `audio_hw` / codec / I2S / AEC。
+**C3 已真机验收 PASS**（2026-08-20，见
+[phase-02c-c3-live-acceptance.md](phase-reports/phase-02c-c3-live-acceptance.md)）：
+播放中 BOOT 本地先停、`interrupt` / `cancelOutput`、同 cid 新上行。
+不得破坏 Phase 2A `audio_hw` / codec / I2S / AEC。C4/C5 尚未开始。
 
 ### 验收标准
 
 C0 Bridge↔Talk（host fixture，已通）；C1 上行中文（**已验收 PASS**，2026-08-19）；
-C2 下行播放（**已验收 PASS**，2026-08-19）；C3 本地先停的 barge-in；C4
-一次唤醒多轮；C5 Bridge/Gateway/Wi-Fi 恢复且不必重启 ESP32。C3–C5 尚未开始。
+C2 下行播放（**已验收 PASS**，2026-08-19）；C3 本地先停 barge-in
+（**已验收 PASS**，2026-08-20）；C4 一次唤醒多轮；C5 Bridge/Gateway/Wi-Fi
+恢复且不必重启 ESP32。C4–C5 尚未开始。
 
 ### 风险与回滚点
 
@@ -90,7 +94,8 @@ Phase 2A 硬件基线已验收，不得破坏。
 - `firmware/xiaozhi/`：v2.4.2 冻结参考（tag `phase-1b-xiaozhi-reference`）。
 - Stock Gateway Phase 1D 已在 NAS/非交易时段验收；交易时段补测保留。
 - 语音软件主链 2B 已验证；Voice Bridge C0 已通，C1/C2 已真机验收 PASS
-  （2026-08-19）。C3 barge-in 未开始。
+  （2026-08-19）；C3 本地先停 barge-in 已真机验收 PASS（2026-08-20）。
+  C4 尚未开始。
 
 历史阶段的范围/证据只在对应报告，不在本文件展开：
 [1E](phase-reports/phase-01e-live-stock-dashboard.md)、
@@ -101,6 +106,7 @@ Phase 2A 硬件基线已验收，不得破坏。
 
 ## 最近完成
 
+- [Phase 2C — C3 真机验收](phase-reports/phase-02c-c3-live-acceptance.md)（2026-08-20 PASS）
 - [Phase 2C — C2 真机验收](phase-reports/phase-02c-c2-live-acceptance.md)（2026-08-19 PASS）
 - [Phase 2C — C1 真机验收](phase-reports/phase-02c-c1-live-acceptance.md)（2026-08-19 PASS）
 - [Phase 2B — Realtime 主链验证](phase-reports/phase-02b-realtime-validation.md)（2026-08-18）
@@ -109,8 +115,7 @@ Phase 2A 硬件基线已验收，不得破坏。
 
 ## 下一步
 
-1. **C3 本地先停的 barge-in**。C2 已验收：Realtime 回答经 ES8311 可听；
-   采集/播放重叠时有轻微滋啦，留给 C3。C5 恢复矩阵仍未做。
+1. **C4 一次唤醒多轮**（可用 BOOT 代替 wake）。C5 恢复不做。
 2. 运维（不进固件）：EVA 主模型 zai token；headless OAuth 续期。
 3. 旧遗留补测：下一交易时段行情推进；2A WAV 限速与 AEC 模式对比。
 

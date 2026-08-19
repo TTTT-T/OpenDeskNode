@@ -38,9 +38,9 @@ codec 标识：`pcm_s16le_16k_mono`。双方 `hello` 只接受该值。
 `dropped_old`。seq 重复丢弃并计 `seq_dup`；乱序迟到丢弃并计
 `seq_reorder`；出现缺口计 `seq_gap`，会话不中断。播放侧 jitter buffer
 **C2 已实现**：400 帧 × 320 samples = 8 s @16 kHz 样本环；满则 **drop-newest**
-（保已排队播放连续，Realtime 突发时宁可丢尾）。起播预缓冲 6 帧（120 ms），
-仅作 C2 起始值，C3 可再测。`underrun` 为播放诊断，不中断会话、不参与
-transport gating。
+（保已排队播放连续，Realtime 突发时宁可丢尾）。起播预缓冲 6 帧（120 ms）。
+C3 起播增加约 16 ms fade-in；预缓冲仍作起始值，真机可再测。`underrun`
+为播放诊断，不中断会话、不参与 transport gating。
 
 24 kHz 证据：OpenClaw 2026.7.1-2 `dist/talk-Caq_w59s.js` 创建 relay 时
 `audioFormat = REALTIME_VOICE_AUDIO_FORMAT_PCM16_24KHZ`。
@@ -163,8 +163,12 @@ PLAYING 中用户开口
   - Realtime：仍负责 turn detection；Bridge 不重做主 VAD/AEC。
 - 下行 ring **C2 已实现**：8 s @16 kHz；满则 drop-newest。
   Realtime 常在设备 5 s 采集窗结束前开始下行，因此采集期间**必须接收并
-  播放**；不得因 `speaking` 丢弃下行。新 utterance 才清播放队列。这不是
-  C3 barge-in（不发 `interrupt` / 不 `cancelOutput`）。
+  播放**；不得因 `speaking` 丢弃下行。新 utterance 才清播放队列。
+- **C3 barge-in 已实现**：仅 `PLAY_ACTIVE`，playback_start 后 400 ms 且
+  `speech_end` 后 400 ms 才检测。holdoff 内学习 AEC 残差地板；之后残差
+  ≥max(800, floor×3) 连续 4 帧才打断。命中或 BOOT 先把 ES8311 音量置 0
+  再清队列。采集窗内立即 `interrupt` 并重开本 turn。迟到下行在下一
+  `playback_start` 前丢弃。Bridge `suppress_downlink` 直到该次 `speech_end`。
 - interrupt/cancel/end 后清空上、下行队列；迟到旧 conversation 帧丢弃。
 - 不得影响股票看板。
 
