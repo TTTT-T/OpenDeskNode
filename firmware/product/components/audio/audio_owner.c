@@ -40,8 +40,10 @@ esp_err_t audio_owner_acquire(audio_owner_id_t id, TickType_t timeout)
             return ESP_FAIL;
         }
         if (s_current == AUDIO_OWNER_NONE || s_current == id) {
+            /* Only request() expresses intent: acquiring must never clobber
+             * another owner's pending request (s_wanted), or a yield loop
+             * could silently destroy the requester's claim. */
             s_current = id;
-            s_wanted = id;
             xSemaphoreGive(s_mu);
             return ESP_OK;
         }

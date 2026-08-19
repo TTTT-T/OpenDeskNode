@@ -27,19 +27,18 @@
 
 ### 预计模块
 
-`docs/VOICE_BRIDGE_PROTOCOL.md`；`bridge/` 薄服务。C0 host + live Talk 已通。C1 **代码已落地
-并完成 hardening**（per-utterance drop 窗口、audio 失败路径清理、watcher
-baseline 防陈旧证据、Talk reader 存活性、Bridge URI 可移植化）；host 侧
-live 预检已证明 WS 设备路径 → Bridge → Talk → Realtime `transcript.done`
-（`artifacts/phase-02c/c1-ws-precheck.json`，host TTS 证据，**不算 C1 验收**）。
-真机链路被 **USB-JTAG 卡死阻塞**（esptool `No serial data received`，
-与上轮记录一致），需物理断电恢复后重测。不得破坏 Phase 2A `audio_hw`
-/ codec / I2S / AEC。不要把 C1 写成已验收。
+`docs/VOICE_BRIDGE_PROTOCOL.md`；`bridge/` 薄服务。C0 host + live Talk 已通。
+**C1 已真机验收 PASS**（2026-08-19，见
+[phase-02c-c1-live-acceptance.md](phase-reports/phase-02c-c1-live-acceptance.md)）：
+4 轮真人中文 `transcript.done`、每轮 drop=0 无跨轮污染、2A selftest 回归
+PASS、audio ownership 让权→归还→再上行成功、股票链全程正常。验收中额外
+修复 ownership 饥饿、Talk reader 存活、断线 conversation 失效三个缺陷。
+不得破坏 Phase 2A `audio_hw` / codec / I2S / AEC。
 
 ### 验收标准
 
-C0 Bridge↔Talk（host fixture，已通）；C1 上行中文（实现已合入，真机转写
-Pending）；C2 下行播放；C3 本地先停的 barge-in；C4 一次唤醒多轮；C5
+C0 Bridge↔Talk（host fixture，已通）；C1 上行中文（**已验收 PASS**，2026-08-19）；
+C2 下行播放；C3 本地先停的 barge-in；C4 一次唤醒多轮；C5
 Bridge/Gateway/Wi-Fi 恢复且不必重启 ESP32。C2–C5 尚未开始。
 
 ### 风险与回滚点
@@ -98,17 +97,16 @@ Phase 2A 硬件基线已验收，不得破坏。
 
 ## 最近完成
 
+- [Phase 2C — C1 真机验收](phase-reports/phase-02c-c1-live-acceptance.md)（2026-08-19 PASS）
 - [Phase 2B — Realtime 主链验证](phase-reports/phase-02b-realtime-validation.md)（2026-08-18）
 - [Phase 2A — Voice Hardware Bring-up](phase-reports/phase-02a-voice-hardware-bringup.md)（2026-08-18 验收）
 - Phase 1E / 1D / 1D.0 / 1C / 1B.1 / 1B / 1A / 0A / 0（见 `phase-reports/`）
 
 ## 下一步
 
-1. C1 真机验收（前置：ESP32 **完整断电再上电** 恢复 USB-JTAG；固件已构建
-   待烧录，URI 走 `TTT-Macmini.local` mDNS）：BOOT 单击 + 真人中文 ×3 轮 +
-   双击 2A selftest（ownership 让权→归还）+ 股票链确认；watcher
-   `scripts/phase-02c-c1-live.py` 只认 baseline 后新增的 `transcript.done`。
-   不要开始 C2。
+1. **C2 下行播放**（Realtime audio → Bridge → ESP32 → ES8311）。C1 已验收，
+   bridge 已实测收到下行 `output.audio.delta`（478 帧），设备侧播放为 C2 工作。
+   验收期间发现的「WS 空闲被关 + 重连」已修，但完整的 C5 恢复矩阵仍未做。
 2. 运维（不进固件）：EVA 主模型 zai token；headless OAuth 续期。
 3. 旧遗留补测：下一交易时段行情推进；2A WAV 限速与 AEC 模式对比。
 

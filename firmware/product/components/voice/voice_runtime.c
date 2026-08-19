@@ -123,6 +123,15 @@ static void handle_control(const char *text, int len)
     } else if (strcmp(type->valuestring, "conversation_reject") == 0 ||
                strcmp(type->valuestring, "hello_error") == 0) {
         xEventGroupSetBits(s_rt.events, REJECT_BIT);
+    } else if (strcmp(type->valuestring, "error") == 0) {
+        /* A bridge-side conversation invalidation (e.g. after reconnect) must
+         * clear device conversation state so the next utterance re-opens. */
+        const cJSON *code = cJSON_GetObjectItemCaseSensitive(root, "code");
+        if (cJSON_IsString(code) && code->valuestring != NULL &&
+            strcmp(code->valuestring, "unknown_conversation") == 0) {
+            s_rt.conversation_id = 0;
+            ESP_LOGW(TAG, "conversation invalidated by bridge; will re-open");
+        }
     }
     cJSON_Delete(root);
 }
@@ -141,6 +150,9 @@ static void ws_event(void *arg, esp_event_base_t base, int32_t id, void *data)
     case WEBSOCKET_EVENT_ERROR:
         s_rt.helloed = false;
         s_rt.speaking = false;
+        /* Conversation state is bridge-session-scoped: a reconnect lands on a
+         * fresh bridge session, so the next utterance must re-open. */
+        s_rt.conversation_id = 0;
         xEventGroupSetBits(s_rt.events, WS_CLOSED_BIT);
         break;
     case WEBSOCKET_EVENT_DATA:
@@ -426,6 +438,12 @@ static void audio_task(void *arg)
         if (audio_owner_should_yield(AUDIO_OWNER_VOICE)) {
             s_rt.speaking = false;
             release_audio_path(&aec);
+            /* Give the requesting owner a clear window to take ownership;
+             * re-grabbing in a tight loop would starve it. */
+            vTaskDelay(pdMS_TO_TICKS(100));
+            while (audio_owner_current() != AUDIO_OWNER_NONE) {
+                vTaskDelay(pdMS_TO_TICKS(100));
+            }
             while (!establish_audio_path(&aec)) {
                 vTaskDelay(pdMS_TO_TICKS(500));
             }
