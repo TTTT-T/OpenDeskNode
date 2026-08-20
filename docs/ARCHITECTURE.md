@@ -1,6 +1,6 @@
 # 当前系统架构
 
-最后核验：2026-08-19
+最后核验：2026-08-20
 
 文档归属见 [DOCUMENT_INDEX.md](DOCUMENT_INDEX.md)。本文只描述**当前有效系统**，
 不堆叠已废弃方案。决策理由见 [DECISIONS.md](DECISIONS.md) /
@@ -147,9 +147,11 @@ app_main
   └─ network_init → NVS + netif + event loop → Wi-Fi station
 
  产品运行时只有一个音频 RX/TX owner（`audio_owner`）。Voice Runtime 是
- 默认 owner；Phase 2A selftest 仍可调用，但必须先让 Voice 让权。C1 上行
+  默认 owner；Phase 2A selftest 仍可调用，但必须先让 Voice 让权。C1 上行
   + C2 下行播放（ES8311）已真机验收。C3 本地先停 barge-in 已真机验收
-  （BOOT 路径）。C4 一次会话多轮进行中；C5 重连本轮不做。
+  （BOOT 路径）。C4 一次会话多轮与 C5 恢复均为 AUTO-VERIFIED /
+  HW-ACCEPTANCE-PENDING。Wake 仅有 provider 抽象，模型状态为
+  `WAKE MODEL PENDING`。
 ```
 
 Phase 1E 仍把股票业务限制在 `components/stock/`：`stock_model.c` 与测试用

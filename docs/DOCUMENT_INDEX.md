@@ -51,7 +51,7 @@ archive/*                 被替代的历史背景（默认不加载）
 | 文件 | 说明 |
 | --- | --- |
 | [PHASE2C_EVA_VOICE_BRIDGE.md](PHASE2C_EVA_VOICE_BRIDGE.md) | Phase 2C 开题：目标、非目标、验收、未知项 |
-| [VOICE_BRIDGE_PROTOCOL.md](VOICE_BRIDGE_PROTOCOL.md) | ESP32 ↔ Bridge 工作协议草案（2C 冻结对象，未验收） |
+| [VOICE_BRIDGE_PROTOCOL.md](VOICE_BRIDGE_PROTOCOL.md) | ESP32 ↔ Bridge 工作协议草案（2C 冻结对象；C0–C3 ACCEPTED，C4/C5 AUTO-VERIFIED / HW-ACCEPTANCE-PENDING） |
 
 ## C. Phase Report（永久保留）
 
