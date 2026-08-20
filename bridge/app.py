@@ -19,6 +19,21 @@ from .talk import FakeTalkClient, GatewayTalkClient
 LOGGER = logging.getLogger("eva.bridge")
 
 
+async def bind_talk_client(runtime: BridgeConfig, existing=None):
+    """FakeTalk only when talk is explicitly disabled. Gateway down keeps GatewayTalkClient."""
+    if existing is not None:
+        return existing
+    if not runtime.talk_enabled:
+        return FakeTalkClient()
+    token = load_gateway_token()
+    client = GatewayTalkClient(runtime.talk_url, token or "")
+    try:
+        await client.connect()
+    except Exception:
+        LOGGER.exception("Talk connect failed; keeping GatewayTalkClient for retry")
+    return client
+
+
 def create_app(
     config: Optional[BridgeConfig] = None,
     talk=None,
@@ -33,21 +48,7 @@ def create_app(
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
         if state["talk"] is None:
-            if not runtime.talk_enabled:
-                state["talk"] = FakeTalkClient()
-            else:
-                token = load_gateway_token()
-                if not token:
-                    LOGGER.warning("no gateway token; Talk disabled, FakeTalk active")
-                    state["talk"] = FakeTalkClient()
-                else:
-                    client = GatewayTalkClient(runtime.talk_url, token)
-                    try:
-                        await client.connect()
-                        state["talk"] = client
-                    except Exception:
-                        LOGGER.exception("Talk connect failed; FakeTalk fallback")
-                        state["talk"] = FakeTalkClient()
+            state["talk"] = await bind_talk_client(runtime)
         async def talk_supervisor() -> None:
             delay = 1.0
             while True:
