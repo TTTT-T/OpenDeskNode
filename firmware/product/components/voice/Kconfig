@@ -18,13 +18,20 @@ config VOICE_UTTERANCE_MS
     range 1000 15000
     default 5000
 
-config VOICE_WAKE_PROVIDER
-    string "Wake provider (none|mock)"
-    default "none"
+choice VOICE_WAKE_SOURCE
+    prompt "Wake source"
+    default VOICE_WAKE_SOURCE_NONE
     help
         Product wake phrase is 你好 EVA. No confirmed custom WakeNet model
-        is available; status is WAKE MODEL PENDING. BOOT remains a manual
-        trigger and is not a wake-word substitute except for the first turn.
-        Do not enable a fake wakenet provider.
+        is available; status is WAKE MODEL PENDING. BOOT is a manual trigger
+        and is counted separately from mock/wake hits.
+
+config VOICE_WAKE_SOURCE_NONE
+    bool "None (BOOT/manual only)"
+
+config VOICE_WAKE_SOURCE_MOCK
+    bool "Mock wake provider"
+
+endchoice
 
 endmenu

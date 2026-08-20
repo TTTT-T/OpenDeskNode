@@ -1104,7 +1104,7 @@ esp_err_t voice_runtime_start(void)
         s_rt.await_reply = false;
         voice_vad_init(&s_rt.vad);
         voice_recovery_init(&s_rt.recovery);
-        voice_wake_init(&s_rt.wake, VOICE_WAKE_SRC_NONE);
+        voice_wake_init(&s_rt.wake, voice_wake_source_from_config());
     }
     ESP_RETURN_ON_FALSE(s_rt.events != NULL && s_rt.mu != NULL && s_rt.txq != NULL &&
                             s_rt.rxq != NULL,
@@ -1119,35 +1119,38 @@ esp_err_t voice_runtime_start(void)
     return ESP_OK;
 }
 
-void voice_runtime_request_talk(void)
+static void begin_talk_request(const char *why)
 {
-    voice_wake_feed_manual(&s_rt.wake);
     if (s_rt.play != PLAY_IDLE) {
         s_rt.stop_play = true;
         s_rt.barge_pending = true;
         if (s_rt.speaking) {
-            ESP_LOGI(TAG, "manual barge during capture");
+            ESP_LOGI(TAG, "%s barge during capture", why);
             return;
         }
     }
     if (s_rt.events != NULL) {
         xEventGroupSetBits(s_rt.events, TALK_BIT);
-        ESP_LOGI(TAG, "manual talk requested play=%d", (int)s_rt.play);
+        ESP_LOGI(TAG, "%s talk requested play=%d", why, (int)s_rt.play);
     }
+}
+
+void voice_runtime_request_talk(void)
+{
+    voice_wake_handle_runtime(&s_rt.wake, VOICE_WAKE_EVT_MANUAL, s_rt.conversation_id);
+    begin_talk_request("manual");
 }
 
 void voice_runtime_on_wake(void)
 {
-    if (s_rt.conversation_id != 0) {
-        ESP_LOGI(TAG, "wake ignored; follow-up uses VAD cid=%lu",
-                 (unsigned long)s_rt.conversation_id);
+    voice_wake_action_t act =
+        voice_wake_handle_runtime(&s_rt.wake, VOICE_WAKE_EVT_WAKE, s_rt.conversation_id);
+    if (!act.start_talk) {
+        ESP_LOGI(TAG, "wake ignored cid=%lu source=%d", (unsigned long)s_rt.conversation_id,
+                 (int)s_rt.wake.source);
         return;
     }
-    if (!voice_wake_feed_mock(&s_rt.wake, true) && s_rt.wake.source != VOICE_WAKE_SRC_NONE) {
-        return;
-    }
-    voice_wake_take(&s_rt.wake);
-    voice_runtime_request_talk();
+    begin_talk_request("wake");
 }
 
 void voice_runtime_on_network(bool connected)

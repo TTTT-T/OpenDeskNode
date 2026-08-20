@@ -301,6 +301,32 @@ static void test_wake_mock_and_manual_are_decoupled(void)
     CHECK_TRUE(strstr(voice_wake_model_status(), "PENDING") != NULL);
 }
 
+static void test_runtime_wake_does_not_count_as_manual(void)
+{
+    voice_wake_t w;
+    voice_wake_init(&w, VOICE_WAKE_SRC_MOCK);
+    voice_wake_action_t act = voice_wake_handle_runtime(&w, VOICE_WAKE_EVT_WAKE, 0);
+    CHECK_TRUE(act.start_talk);
+    CHECK_TRUE(act.counted_wake);
+    CHECK_TRUE(!act.counted_manual);
+    CHECK_TRUE(w.mock_hits == 1);
+    CHECK_TRUE(w.manual_hits == 0);
+    voice_wake_arm(&w);
+    act = voice_wake_handle_runtime(&w, VOICE_WAKE_EVT_WAKE, 9);
+    CHECK_TRUE(!act.start_talk);
+    CHECK_TRUE(w.manual_hits == 0);
+    act = voice_wake_handle_runtime(&w, VOICE_WAKE_EVT_MANUAL, 0);
+    CHECK_TRUE(act.start_talk);
+    CHECK_TRUE(act.counted_manual);
+    CHECK_TRUE(!act.counted_wake);
+    CHECK_TRUE(w.manual_hits == 1);
+    CHECK_TRUE(w.mock_hits == 1);
+    voice_wake_init(&w, VOICE_WAKE_SRC_NONE);
+    act = voice_wake_handle_runtime(&w, VOICE_WAKE_EVT_WAKE, 0);
+    CHECK_TRUE(!act.start_talk);
+    CHECK_TRUE(w.manual_hits == 0);
+}
+
 static void test_hello_json(void)
 {
     char buf[256];
@@ -328,6 +354,7 @@ int main(void)
     test_recovery_backoff_is_bounded();
     test_recovery_fault_clears_session();
     test_wake_mock_and_manual_are_decoupled();
+    test_runtime_wake_does_not_count_as_manual();
     test_hello_json();
     if (failures) {
         printf("VOICE_PROTOCOL_HOST_TESTS_FAILED %d\n", failures);
