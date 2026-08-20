@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def _load():
     if "phase_02c_accept" in sys.modules:
-        return sys.modules["phase_02c_accept"]
+        del sys.modules["phase_02c_accept"]
     spec = importlib.util.spec_from_file_location(
         "phase_02c_accept", ROOT / "scripts" / "phase-02c-accept.py"
     )
@@ -59,6 +59,56 @@ class AcceptHardwareTests(unittest.TestCase):
         item = accept.evaluate_stock(None, None)
         self.assertEqual(item["status"], "HW-ACCEPTANCE-PENDING")
         self.assertNotEqual(item["status"], "PASS")
+
+    def test_run_acceptance_starts_watchers_in_order_and_asks_humans(self):
+        calls = []
+        asks = []
+
+        def watch(name):
+            calls.append(name)
+            if name == "C4_MULTI_TURN":
+                return {"ok": True, "verdict": {"multi_turn_complete": True}}
+            if name == "C3_LOCAL_STOP":
+                return {"ok": True, "verdict": {"barge_in_complete": True}}
+            return {
+                "ok": True,
+                "verdict": {
+                    "ok": True,
+                    "new_speech_starts": 1,
+                    "new_uplink": True,
+                    "new_create_ok": 1,
+                    "new_transcript_done": 1,
+                    "stale_session": False,
+                },
+            }
+
+        def ask(prompt):
+            asks.append(prompt)
+            return True
+
+        payload = accept.run_acceptance(watch_fn=watch, ask_fn=ask, head="test")
+        self.assertEqual(
+            calls,
+            [
+                "C4_MULTI_TURN",
+                "C3_LOCAL_STOP",
+                "C5_BRIDGE_RECOVERY",
+                "C5_GATEWAY_RECOVERY",
+                "C5_WIFI_RECOVERY",
+            ],
+        )
+        self.assertEqual(len(asks), 3)
+        results = payload["results"]
+        self.assertEqual(results["C4_MULTI_TURN"]["status"], "PASS")
+        self.assertEqual(results["C3_LOCAL_STOP"]["status"], "PASS")
+        self.assertEqual(results["C5_BRIDGE_RECOVERY"]["status"], "PASS")
+        self.assertEqual(results["STOCK_REGRESSION"]["status"], "PASS")
+        self.assertEqual(results["WAKE_WORD"]["status"], "WAKE MODEL PENDING")
+        self.assertIn("C4_MULTI_TURN", accept.WATCH_ORDER)
+
+    def test_c3_yes_without_watcher_ok_is_fail(self):
+        item = accept.evaluate_c3_from_watch({"ok": False, "verdict": {}}, True)
+        self.assertEqual(item["status"], "FAIL")
 
 
 if __name__ == "__main__":
