@@ -37,6 +37,27 @@ Phase 应范围清晰、可测试、可回滚。若同时包含大规模重构�
 
 无法执行的检查必须记录原因、替代证据和剩余风险。没有证据时状态保持进行中或阻塞，不得用“看起来可用”完成验收。
 
+## 3.1 Continuous Implementation + Deferred Hardware Acceptance
+
+用户经常不在 ESP32 真机旁。可离线完成的实现、单元测试、host/mock test、Mac 端 live test、静态检查、构建、日志与验收工具必须连续完成；只有确实需要 ESP32 真机、按键、人耳判断、断网操作等用户参与的项目进入待验收队列。缺少现场操作不得阻塞后续不依赖该结果的开发，也不得因此反复停下来询问“下一步做什么”。
+
+交付状态（互斥，后态覆盖前态）：
+
+| 状态 | 含义 |
+| --- | --- |
+| `IMPLEMENTED` | 代码已落地，自动验证尚未跑完或未记录。 |
+| `AUTO-VERIFIED` | 当前环境可自动执行的测试、构建与静态检查已通过。 |
+| `HW-ACCEPTANCE-PENDING` | 只剩真机/人工验收；不阻塞后续独立开发。 |
+| `ACCEPTED` | 真机验收通过，有报告或 runner 证据。 |
+
+规则：
+
+1. 同一时间只允许一个主题处于 actively implementing；允许同时存在多个 `HW-ACCEPTANCE-PENDING` 项。
+2. `HW-ACCEPTANCE-PENDING` 不阻塞后续独立开发。
+3. 不得把未做过的真机测试写成 PASS，不得把 `AUTO-VERIFIED` 写成 `ACCEPTED`。
+4. 每项 Pending 必须记录：尚未执行的测试、为什么当前不能执行、已有替代证据、最终真机验收步骤、PASS/FAIL 判定标准。
+5. 当前 Pending 队列的唯一入口是 `docs/PROJECT_STATE.md`。统一真机验收入口是 `scripts/accept-hardware.sh`。
+
 ## 4. 失败处理
 
 Bug 或验收失败按以下顺序处理：

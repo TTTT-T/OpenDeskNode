@@ -169,13 +169,16 @@ PLAYING 中用户开口
   ≥max(800, floor×3) 连续 4 帧才打断。命中或 BOOT 先把 ES8311 音量置 0
   再清队列。采集窗内立即 `interrupt` 并重开本 turn。迟到下行在下一
   `playback_start` 前丢弃。Bridge `suppress_downlink` 直到该次 `speech_end`。
-  C3 正式验收是 BOOT 本地先停；无按键插话可打断时，不得把「ESP32 本地
-  VAD 已真机触发」写成已证实事实（更可能是 Realtime server VAD）。
+   C3 正式验收是 BOOT 本地先停。**播放中 device-side VAD barge-in** 与
+   **静音 follow-up LISTENING 下的 VAD** 不是同一场景：前者 C4 不要求证明；
+   后者若被用来启动后续轮，则 C4 真机验收必须证明。不得把未做的真机 VAD
+   测试写成 PASS。
 - **C4 follow-up 已实现**：`playback_end` drain 后（或 `speech_end` 后
-  2.5 s 仍无下行）进入 LISTENING，同一 `conversation_id` / Talk session
-  等待下一轮 `speech_start`，不必再 `conversation_open`。监听窗 12 s，
-  起听 holdoff 400 ms；超时设备发 `conversation_end(timeout)`。BOOT 只
-  可替代首次 wake。
+   2.5 s 仍无下行）进入 LISTENING，同一 `conversation_id` / Talk session
+   等待下一轮 `speech_start`，不必再 `conversation_open`。监听窗 12 s，
+   起听 holdoff 400 ms；超时设备发 `conversation_end(timeout)`。BOOT 只
+   可替代首次 wake。后续轮由 device-side VAD 在静音 follow-up 窗内触发，
+   不得再依赖 BOOT。
 - interrupt/cancel/end 后清空上、下行队列；迟到旧 conversation 帧丢弃。
 - 不得影响股票看板。
 

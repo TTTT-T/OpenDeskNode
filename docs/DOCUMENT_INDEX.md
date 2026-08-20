@@ -41,7 +41,7 @@ archive/*                 被替代的历史背景（默认不加载）
 | [decisions/](decisions/README.md) | ADR 历史与变更规则 | 当前状态入口 |
 | [HARDWARE_BASELINE.md](HARDWARE_BASELINE.md) | 硬件验收矩阵与未验项 | 产品路线 |
 | [UPSTREAM_BASELINE.md](UPSTREAM_BASELINE.md) | 工具链 / upstream 版本 | 产品行为 |
-| [DELIVERY_WORKFLOW.md](DELIVERY_WORKFLOW.md) | Phase / 验收 / 咨询流程 | 具体阶段内容 |
+| [DELIVERY_WORKFLOW.md](DELIVERY_WORKFLOW.md) | Phase / 验收 / 咨询流程；`IMPLEMENTED` / `AUTO-VERIFIED` / `HW-ACCEPTANCE-PENDING` / `ACCEPTED` | 具体阶段内容；Pending 队列以 PROJECT_STATE 为准 |
 | [NAS_STOCK_GATEWAY.md](NAS_STOCK_GATEWAY.md) | Stock Gateway NAS 部署与运维记录 | 语音架构 |
 | [AGENTS.md](../AGENTS.md) | Agent 工作约定 | 项目事实 |
 | [README.md](../README.md) | 仓库入口 | 架构全文 |

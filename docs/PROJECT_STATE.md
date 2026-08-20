@@ -37,17 +37,16 @@ PASS、audio ownership 让权→归还→再上行成功、股票链全程正常
 [phase-02c-c2-live-acceptance.md](phase-reports/phase-02c-c2-live-acceptance.md)）：
 Realtime 回答经 ES8311 可听，frames_rx≈frames_play、underrun=0、drop=0，
 股票链全程正常。验收中修复采集窗丢下行与 2 s drop-oldest 卡顿。
-**C3 已真机验收 PASS**（2026-08-20，见
-[phase-02c-c3-live-acceptance.md](phase-reports/phase-02c-c3-live-acceptance.md)）：
 播放中 BOOT 本地先停、`interrupt` / `cancelOutput`、同 cid 新上行。
-不得破坏 Phase 2A `audio_hw` / codec / I2S / AEC。**C4 进行中**（一次进入会话后连续多轮，BOOT 只可替代首次 wake）。C5 不做。
+不得破坏 Phase 2A `audio_hw` / codec / I2S / AEC。**C4 IMPLEMENTED**（一次进入会话后连续多轮，BOOT 只可替代首次 wake；自动验证进行中）。**C5 本轮实现，真机 Deferred**。
 
 ### 验收标准
 
-C0 Bridge↔Talk（host fixture，已通）；C1 上行中文（**已验收 PASS**，2026-08-19）；
-C2 下行播放（**已验收 PASS**，2026-08-19）；C3 本地先停 barge-in
-（**已验收 PASS**，2026-08-20）；C4 一次唤醒多轮（进行中）；C5 Bridge/Gateway/Wi-Fi
-恢复且不必重启 ESP32（本轮不做）。
+C0 Bridge↔Talk（host fixture，已通）；C1 上行中文（**ACCEPTED**，2026-08-19）；
+C2 下行播放（**ACCEPTED**，2026-08-19）；C3 本地先停 barge-in
+（**ACCEPTED**，2026-08-20）；C4 一次唤醒多轮（IMPLEMENTED，自动验证中）；
+C5 Bridge/Gateway/Wi-Fi 恢复且不必重启 ESP32（本轮实现，真机 Deferred）。
+交付状态定义见 [DELIVERY_WORKFLOW.md](DELIVERY_WORKFLOW.md) §3.1。
 
 ### 风险与回滚点
 
@@ -95,7 +94,7 @@ Phase 2A 硬件基线已验收，不得破坏。
 - Stock Gateway Phase 1D 已在 NAS/非交易时段验收；交易时段补测保留。
 - 语音软件主链 2B 已验证；Voice Bridge C0 已通，C1/C2 已真机验收 PASS
   （2026-08-19）；C3 本地先停 barge-in 已真机验收 PASS（2026-08-20）。
-  C4 进行中；C5 不做。
+  C4 IMPLEMENTED；C5 本轮实现，真机 Deferred。
 
 历史阶段的范围/证据只在对应报告，不在本文件展开：
 [1E](phase-reports/phase-01e-live-stock-dashboard.md)、
@@ -113,13 +112,32 @@ Phase 2A 硬件基线已验收，不得破坏。
 - [Phase 2A — Voice Hardware Bring-up](phase-reports/phase-02a-voice-hardware-bringup.md)（2026-08-18 验收）
 - Phase 1E / 1D / 1D.0 / 1C / 1B.1 / 1B / 1A / 0A / 0（见 `phase-reports/`）
 
+## 交付状态（§3.1）
+
+当前 actively implementing：**Phase 2C C4 auto-verify → C5 recovery**。
+
+| 项 | 状态 |
+| --- | --- |
+| C0 host + live Talk | `ACCEPTED` |
+| C1 真机上行 | `ACCEPTED`（2026-08-19） |
+| C2 真机下行 | `ACCEPTED`（2026-08-19） |
+| C3 BOOT 本地先停 barge-in | `ACCEPTED`（2026-08-20） |
+| C3 播放中 device-side VAD barge-in | 未证实；不得写成 PASS |
+| C4 same-session multi-turn | `IMPLEMENTED`（自动验证中） |
+| C5 recovery | 本轮实现，真机 Deferred |
+| 「你好 EVA」WakeNet | `WAKE MODEL PENDING` |
+
+两个 VAD 场景不得混淆：
+
+- **播放中 barge-in VAD**：EVA 播放时 device-side VAD 插话。C3 正式成立的是 BOOT 本地先停；C4 **不要求**证明该路径。
+- **静音 follow-up VAD**：`playback_end` 后 LISTENING 窗内由 device-side VAD 启动下一轮。若实现走这条路径，C4 最终真机验收 **必须**证明该触发，而不是 BOOT。
+
 ## 下一步
 
-1. **C4 一次唤醒多轮**（进行中；BOOT 只可替代首次 wake，后续轮不得再按 BOOT，
-   不得重建 conversation / Talk session）。C5 恢复不做。
-   ESP32 本地 VAD 是否真机命中不作为 C4 阻塞项，也不得写成已证实事实。
+1. 完成 C4 自动验证并标记 `AUTO-VERIFIED` / `HW-ACCEPTANCE-PENDING`，然后实现 C5（真机 Deferred）。不要因缺少真机而停工。
 2. 运维（不进固件）：EVA 主模型 zai token；headless OAuth 续期。
 3. 旧遗留补测：下一交易时段行情推进；2A WAV 限速与 AEC 模式对比。
+4. 用户回到设备旁时只跑 `bash scripts/accept-hardware.sh`（入口本轮交付）。
 
 ## 重要风险与未验证
 

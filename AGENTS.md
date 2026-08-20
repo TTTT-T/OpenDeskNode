@@ -76,6 +76,7 @@
 - 不得删除或弱化测试来通过检查，不得隐藏异常，不得用无依据的 `sleep`、吞异常或无限重试掩盖根因。
 - 必须采用 workaround 时，记录原因、影响和可移除条件。
 - 阶段结束前检查目标、原有测试、回归、复杂度、调试残留、文档一致性和未记录假设。
+- 真机不在场时采用 Continuous Implementation + Deferred Hardware Acceptance（见 `docs/DELIVERY_WORKFLOW.md` §3.1）：可离线验证的工作连续做完；只把必须用户在场的项目记入 `HW-ACCEPTANCE-PENDING`。不得把未做的真机测试写成 PASS，也不得因缺少按键/听音/拔网而停止独立开发。
 
 ## Git 规则
 
