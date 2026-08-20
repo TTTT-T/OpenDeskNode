@@ -101,3 +101,9 @@ bool voice_followup_should_trigger(bool listening, bool playing, bool speaking,
     return voice_followup_should_listen(listening, playing, speaking, conversation_id) &&
            holdoff_ok && speech;
 }
+
+bool voice_idle_should_trigger(bool helloed, bool playing, bool speaking,
+                               uint32_t conversation_id, bool holdoff_ok, bool speech)
+{
+    return helloed && conversation_id == 0 && !playing && !speaking && holdoff_ok && speech;
+}

@@ -31,3 +31,5 @@ bool voice_followup_should_listen(bool listening, bool playing, bool speaking,
 bool voice_followup_should_trigger(bool listening, bool playing, bool speaking,
                                    uint32_t conversation_id, bool holdoff_ok,
                                    bool speech);
+bool voice_idle_should_trigger(bool helloed, bool playing, bool speaking,
+                               uint32_t conversation_id, bool holdoff_ok, bool speech);

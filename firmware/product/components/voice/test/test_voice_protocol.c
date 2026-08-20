@@ -241,6 +241,10 @@ static void test_followup_listen_is_not_playback_barge_in(void)
     CHECK_TRUE(!voice_followup_should_listen(true, false, false, 0));
     CHECK_TRUE(voice_followup_should_trigger(true, false, false, 5, true, true));
     CHECK_TRUE(!voice_followup_should_trigger(true, true, false, 5, true, true));
+    CHECK_TRUE(voice_idle_should_trigger(true, false, false, 0, true, true));
+    CHECK_TRUE(!voice_idle_should_trigger(false, false, false, 0, true, true));
+    CHECK_TRUE(!voice_idle_should_trigger(true, false, false, 5, true, true));
+    CHECK_TRUE(!voice_idle_should_trigger(true, true, false, 0, true, true));
     CHECK_TRUE(!voice_barge_should_stop(false, true, true));
     CHECK_TRUE(voice_barge_should_stop(true, true, true));
 }

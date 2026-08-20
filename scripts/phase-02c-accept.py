@@ -41,22 +41,22 @@ WATCH_ORDER = (
 
 PROMPTS = {
     "C4_MULTI_TURN": (
-        "第一次按 BOOT，说第一句话，等 EVA 回答；不要再按任何键，直接说第二句，"
-        "最好再说第三句。"
+        "不要按 BOOT。对着设备说第一句话，等 EVA 回答；然后不要按键，直接说第二句，"
+        "最好再说第三句。BOOT 连按会误开自检，语音测试不要用它。"
     ),
-    "C3_LOCAL_STOP": "EVA 播放时按 BOOT。听扬声器是否立即停止。",
+    "C3_LOCAL_STOP": "EVA 播放时直接大声插话，不要按 BOOT。听扬声器是否立即停止。",
     "C5_BRIDGE_RECOVERY": (
-        "先按 BOOT 说一句话，建立旧 Talk session。等到 watcher 打印 "
+        "不要按 BOOT。先对着设备说一句话，等到 watcher 打印 "
         "ARMED stale_session_id=... 之后，再停止并重新启动 Voice Bridge。"
-        "不要重启 ESP32。恢复后再按 BOOT 说话。"
+        "不要重启 ESP32。恢复后再说话。"
     ),
     "C5_GATEWAY_RECOVERY": (
-        "先按 BOOT 说一句话，建立旧 Talk session。等到 watcher 打印 "
+        "不要按 BOOT。先对着设备说一句话，等到 watcher 打印 "
         "ARMED stale_session_id=... 之后，再暂时停止 OpenClaw Gateway :18789 并启动。"
         "不要重启 ESP32。恢复后再说话。"
     ),
     "C5_WIFI_RECOVERY": (
-        "先按 BOOT 说一句话，建立旧 Talk session。等到 watcher 打印 "
+        "不要按 BOOT。先对着设备说一句话，等到 watcher 打印 "
         "ARMED stale_session_id=... 之后，再临时断开 ESP32 Wi-Fi 并恢复。"
         "不要重启 ESP32。恢复后再说话。"
     ),

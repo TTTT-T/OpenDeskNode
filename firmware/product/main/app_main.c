@@ -50,13 +50,9 @@ static bool report_memory_baseline(void)
 
 static void on_boot_button_pressed(board_button_event_t event)
 {
-    if (event == BOARD_BUTTON_DOUBLE_PRESS) {
-        audio_selftest_request_rerun();
-        display_set_button_status("Selftest");
-    } else {
-        voice_runtime_request_talk();
-        display_set_button_status("Talk");
-    }
+    (void)event;
+    voice_runtime_request_talk();
+    display_set_button_status("Talk");
 }
 
 static void on_wifi_status_changed(network_status_t status)

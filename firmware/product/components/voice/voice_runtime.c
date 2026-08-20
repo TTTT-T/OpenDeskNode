@@ -100,6 +100,7 @@ typedef struct {
     int64_t first_rx_us;
     int64_t play_start_us;
     int64_t listen_start_us;
+    int64_t hello_us;
     voice_recovery_t recovery;
     voice_wake_t wake;
 } voice_rt_t;
@@ -379,6 +380,8 @@ static void handle_control(const char *text, int len)
     }
     if (strcmp(type->valuestring, "hello_ok") == 0) {
         s_rt.helloed = true;
+        s_rt.hello_us = esp_timer_get_time();
+        voice_vad_reset(&s_rt.vad);
         xEventGroupSetBits(s_rt.events, HELLO_OK_BIT);
     } else if (strcmp(type->valuestring, "playback_start") == 0) {
         begin_playback();
@@ -983,6 +986,23 @@ static void audio_task(void *arg)
             } else {
                 voice_vad_feed(&s_rt.vad, voice_pcm_mean_abs(out, chunk), 0, true);
             }
+        } else if (s_rt.helloed && s_rt.conversation_id == 0 && play == PLAY_IDLE &&
+                   !s_rt.speaking) {
+            const bool idle_holdoff =
+                s_rt.hello_us > 0 &&
+                (now_us - s_rt.hello_us) >= (int64_t)VOICE_FOLLOWUP_HOLDOFF_MS * 1000;
+            const uint32_t mag = voice_pcm_mean_abs(out, chunk);
+            if (!idle_holdoff) {
+                voice_vad_feed(&s_rt.vad, mag, 0, true);
+            } else if (voice_idle_should_trigger(true, false, false, 0, true,
+                                                 voice_vad_feed(&s_rt.vad, mag, 0, false))) {
+                if (s_rt.events != NULL) {
+                    xEventGroupSetBits(s_rt.events, TALK_BIT);
+                }
+                printf("PHASE2C_C4 idle_vad energy=%lu floor=%lu\n",
+                       (unsigned long)s_rt.vad.last_abs, (unsigned long)s_rt.vad.floor_abs);
+                fflush(stdout);
+            }
         } else if (!s_rt.listen_followup) {
             voice_vad_reset(&s_rt.vad);
         }
@@ -1121,6 +1141,10 @@ esp_err_t voice_runtime_start(void)
 
 static void begin_talk_request(const char *why)
 {
+    if (audio_owner_current() != AUDIO_OWNER_VOICE) {
+        ESP_LOGW(TAG, "talk ignored; audio owner=%d", (int)audio_owner_current());
+        return;
+    }
     if (s_rt.play != PLAY_IDLE) {
         s_rt.stop_play = true;
         s_rt.barge_pending = true;

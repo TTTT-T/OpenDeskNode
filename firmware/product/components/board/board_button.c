@@ -10,8 +10,7 @@
 #include "esp_log.h"
 
 static const char *TAG = "board_button";
-static const TickType_t DEBOUNCE_TICKS = pdMS_TO_TICKS(50);
-static const TickType_t DOUBLE_PRESS_TICKS = pdMS_TO_TICKS(400);
+static const TickType_t DEBOUNCE_TICKS = pdMS_TO_TICKS(80);
 static QueueHandle_t s_button_events;
 static board_button_callback_t s_callback;
 
@@ -41,38 +40,25 @@ static void boot_button_task(void *arg)
             continue;
         }
 
-        /* Confirm the active-low level after the debounce window. */
         vTaskDelay(DEBOUNCE_TICKS);
         if (gpio_get_level(BOARD_BOOT_BUTTON_GPIO) != 0) {
             last_press = now;
             have_last_press = true;
             continue;
         }
-
-        /*
-         * Wait briefly for a second confirmed press to classify the event as
-         * a double press; otherwise report a single press.
-         */
-        board_button_event_t kind = BOARD_BUTTON_PRESS;
-        while ((xTaskGetTickCount() - now) < DOUBLE_PRESS_TICKS) {
-            TickType_t probe_at = xTaskGetTickCount();
-            if (xQueueReceive(s_button_events, &event,
-                              DOUBLE_PRESS_TICKS - (probe_at - now)) == pdTRUE) {
-                if (gpio_get_level(BOARD_BOOT_BUTTON_GPIO) == 0) {
-                    kind = BOARD_BUTTON_DOUBLE_PRESS;
-                    break;
-                }
+        while (gpio_get_level(BOARD_BOOT_BUTTON_GPIO) == 0) {
+            vTaskDelay(pdMS_TO_TICKS(10));
+            if ((xTaskGetTickCount() - now) > pdMS_TO_TICKS(2000)) {
+                break;
             }
         }
-
+        vTaskDelay(DEBOUNCE_TICKS);
+        while (xQueueReceive(s_button_events, &event, 0) == pdTRUE) {
+        }
         last_press = xTaskGetTickCount();
         have_last_press = true;
-        if (kind == BOARD_BUTTON_DOUBLE_PRESS) {
-            ESP_LOGI(TAG, "BOOT double press");
-        } else {
-            ESP_LOGI(TAG, "BOOT press");
-        }
-        s_callback(kind);
+        ESP_LOGI(TAG, "BOOT press");
+        s_callback(BOARD_BUTTON_PRESS);
     }
 }
 

@@ -111,7 +111,7 @@ class AcceptHardwareTests(unittest.TestCase):
             "C5_WIFI_RECOVERY",
         ):
             self.assertIn("ARMED", accept.PROMPTS[name])
-            self.assertIn("先按 BOOT", accept.PROMPTS[name])
+            self.assertIn("不要按 BOOT", accept.PROMPTS[name])
 
     def test_c3_yes_without_watcher_ok_is_fail(self):
         item = accept.evaluate_c3_from_watch({"ok": False, "verdict": {}}, True)

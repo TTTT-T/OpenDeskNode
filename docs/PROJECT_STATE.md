@@ -142,7 +142,7 @@ Phase 2A 硬件基线已验收，不得破坏。
 - 尚未执行：真机一次 BOOT 后至少两轮、不再按键的 follow-up。
 - 为什么当前不能执行：用户不在 ESP32 旁。
 - 替代证据：host follow-up vs barge-in 分离测试、`tests.test_bridge_c4`、`tests.test_c4_live_watcher`、`bash scripts/verify-phase-2c.sh`。
-- 真机步骤：第一次 BOOT → 说第一句 → EVA 回答 → 不按键说第二句（最好第三句）。
+- 真机步骤：不要按 BOOT。对着设备说第一句 → EVA 回答 → 不按键说第二句（最好第三句）。
 - PASS：同一 cid、同一 Talk sessionId、create 不增加、≥2 新 `speech_start`、≥2 新 `transcript.done`、有新上行；串口出现 `PHASE2C_C4 follow_up why=vad`。FAIL：重建 session/cid、第二轮靠 BOOT、或只有历史 transcript。
 
 ### C3_LOCAL_STOP（回归）
@@ -150,7 +150,7 @@ Phase 2A 硬件基线已验收，不得破坏。
 - 尚未执行：本轮未重做播放中 BOOT 听音。
 - 为什么当前不能执行：需要人耳。
 - 替代证据：C3 已 ACCEPTED（2026-08-20）；本轮 host C3 回归通过。
-- 真机步骤：EVA 播放时按 BOOT。
+- 真机步骤：EVA 播放时大声插话（不要按 BOOT；BOOT 易被识别成双击并误开 2A 自检）。
 - PASS：扬声器立即停，且有新 interrupt / cancelOutput / 同 cid。FAIL：喇叭继续响或新开会话。
 
 ### C5_BRIDGE_RECOVERY / C5_GATEWAY_RECOVERY / C5_WIFI_RECOVERY
