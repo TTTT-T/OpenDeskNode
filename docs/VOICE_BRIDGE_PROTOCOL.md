@@ -145,7 +145,7 @@ PLAYING 中用户开口
 - 断线后 conversation 作废（v0 不恢复 Talk session）；重连后重新 hello。
 - Bridge 重启 / Gateway 重启 / Wi-Fi 闪断：设备必须自行恢复。
   **不得设计成必须重启 ESP32。**
-- **C5 recovery 已实现（AUTO-VERIFIED / HW-ACCEPTANCE-PENDING）**：bounded
+- **C5 recovery 已实现（`HW-ACCEPTANCE-PENDING`，automatic verification: PASS）**：bounded
   backoff 1s→60s、session invalidation、queue/VAD/playback reset、自动 hello。
   禁止 `ESP.restart()`、禁止无限高速重连。Gateway 掉线后不得复用 stale
   Talk sessionId。

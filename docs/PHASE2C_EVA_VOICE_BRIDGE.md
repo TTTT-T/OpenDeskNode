@@ -153,7 +153,7 @@ queue depth、underrun/overrun。
 4. C2：**已真机验收 PASS**（2026-08-19，见
    `phase-reports/phase-02c-c2-live-acceptance.md`）。C3 **已真机验收
    PASS**（2026-08-20，见 `phase-reports/phase-02c-c3-live-acceptance.md`）。
-   → **C4 AUTO-VERIFIED / HW-ACCEPTANCE-PENDING** → **C5 AUTO-VERIFIED /
-   HW-ACCEPTANCE-PENDING**。
+   → **C4 `HW-ACCEPTANCE-PENDING`**（automatic verification: PASS）→
+   **C5 `HW-ACCEPTANCE-PENDING`**（automatic verification: PASS）。
 5. Wake 只做工程边界；无已确认 WakeNet 模型时状态为 `WAKE MODEL PENDING`，不阻塞 transport。
    真机统一入口：`bash scripts/accept-hardware.sh`。

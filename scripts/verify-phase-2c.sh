@@ -85,7 +85,14 @@ rg -q 'session_invalidations' "$ROOT_DIR/bridge/session.py"
 rg -q 'async def reconnect' "$ROOT_DIR/bridge/talk.py"
 rg -q 'talk_supervisor' "$ROOT_DIR/bridge/app.py"
 rg -q 'C4_MULTI_TURN' "$ROOT_DIR/scripts/phase-02c-accept.py"
+rg -q -- '--run' "$ROOT_DIR/scripts/accept-hardware.sh"
+rg -q 'run_acceptance' "$ROOT_DIR/scripts/phase-02c-accept.py"
 rg -q 'voice_followup_should_trigger' "$voice_dir/voice_vad.c"
+rg -q 'voice_wake_handle_runtime' "$voice_dir/voice_runtime.c"
+rg -q 'voice_wake_source_from_config' "$voice_dir/voice_runtime.c"
+rg -q 'CONFIG_VOICE_WAKE_SOURCE_MOCK' "$voice_dir/voice_wake.c"
+rg -q 'keeping GatewayTalkClient' "$ROOT_DIR/bridge/app.py"
+rg -q 'bind_talk_client' "$ROOT_DIR/bridge/app.py"
 
 if rg -n 'talk\.session|openai\.com|OPENAI_API_KEY|api\.tenclass\.net|xiaozhi\.me' \
   "$voice_dir/voice_runtime.c" "$voice_dir/voice_protocol.c" \
@@ -99,6 +106,11 @@ if rg -n 'audio_hw_read|audio_hw_write' "$voice_dir/voice_runtime.c" >/dev/null 
   :
 else
   echo "Voice runtime must own audio before RX/TX" >&2
+  exit 1
+fi
+
+if rg -n 'FakeTalk fallback' "$ROOT_DIR/bridge/app.py"; then
+  echo "talk_enabled must not fall back to FakeTalk" >&2
   exit 1
 fi
 
@@ -126,7 +138,8 @@ PYTHONPYCACHEPREFIX="$PYTHON_CACHE" "$PYTHON_BIN" -m unittest \
   tests.test_bridge_config   tests.test_bridge_c1 tests.test_c1_live_watcher \
   tests.test_c2_live_watcher tests.test_bridge_c3 tests.test_c3_live_watcher \
   tests.test_bridge_c4 tests.test_c4_live_watcher \
-  tests.test_bridge_c5 tests.test_c5_live_watcher tests.test_accept_hardware -v
+  tests.test_bridge_c5 tests.test_c5_live_watcher tests.test_accept_hardware \
+  tests.test_bridge_talk_bind -v
 PYTHONPYCACHEPREFIX="$PYTHON_CACHE" "$PYTHON_BIN" -m py_compile \
   bridge/__init__.py bridge/protocol.py bridge/audio.py bridge/config.py \
   bridge/talk.py bridge/session.py bridge/app.py bridge/__main__.py \
@@ -144,4 +157,8 @@ cc -std=c99 -Wall -Werror -Wextra -I"$voice_dir/include" \
 "$work_dir/test_voice_protocol"
 
 git diff --check
-echo "phase-2c C4/C5 host verification: OK"
+
+echo "phase-2c host verification: OK"
+echo "ESP-IDF product firmware build:"
+bash "$ROOT_DIR/scripts/build-clean-firmware.sh"
+echo "phase-2c C4/C5 verification including ESP-IDF build: OK"

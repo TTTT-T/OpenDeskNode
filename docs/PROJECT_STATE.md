@@ -38,14 +38,14 @@ PASS、audio ownership 让权→归还→再上行成功、股票链全程正常
 Realtime 回答经 ES8311 可听，frames_rx≈frames_play、underrun=0、drop=0，
 股票链全程正常。验收中修复采集窗丢下行与 2 s drop-oldest 卡顿。
 播放中 BOOT 本地先停、`interrupt` / `cancelOutput`、同 cid 新上行。
-不得破坏 Phase 2A `audio_hw` / codec / I2S / AEC。**C4 AUTO-VERIFIED / HW-ACCEPTANCE-PENDING**。**C5 AUTO-VERIFIED / HW-ACCEPTANCE-PENDING**。Wake 仅工程边界，`WAKE MODEL PENDING`。
+不得破坏 Phase 2A `audio_hw` / codec / I2S / AEC。**C4 `HW-ACCEPTANCE-PENDING`**（automatic verification: PASS）。**C5 `HW-ACCEPTANCE-PENDING`**（automatic verification: PASS）。Wake 仅工程边界，`WAKE MODEL PENDING`。
 
 ### 验收标准
 
 C0 Bridge↔Talk（host fixture，已通）；C1 上行中文（**ACCEPTED**，2026-08-19）；
 C2 下行播放（**ACCEPTED**，2026-08-19）；C3 本地先停 barge-in
-（**ACCEPTED**，2026-08-20）；C4 一次唤醒多轮（**AUTO-VERIFIED / HW-ACCEPTANCE-PENDING**）；
-C5 Bridge/Gateway/Wi-Fi 恢复且不必重启 ESP32（**AUTO-VERIFIED / HW-ACCEPTANCE-PENDING**）。
+（**ACCEPTED**，2026-08-20）；C4 一次唤醒多轮（**HW-ACCEPTANCE-PENDING**，automatic verification: PASS）；
+C5 Bridge/Gateway/Wi-Fi 恢复且不必重启 ESP32（**HW-ACCEPTANCE-PENDING**，automatic verification: PASS）。
 交付状态定义见 [DELIVERY_WORKFLOW.md](DELIVERY_WORKFLOW.md) §3.1。
 统一真机入口：`bash scripts/accept-hardware.sh`。
 
@@ -95,7 +95,7 @@ Phase 2A 硬件基线已验收，不得破坏。
 - Stock Gateway Phase 1D 已在 NAS/非交易时段验收；交易时段补测保留。
 - 语音软件主链 2B 已验证；Voice Bridge C0 已通，C1/C2 已真机验收 PASS
   （2026-08-19）；C3 本地先停 barge-in 已真机验收 PASS（2026-08-20）。
-  C4/C5 AUTO-VERIFIED / HW-ACCEPTANCE-PENDING。
+  C4/C5 `HW-ACCEPTANCE-PENDING`（automatic verification: PASS）。
 
 历史阶段的范围/证据只在对应报告，不在本文件展开：
 [1E](phase-reports/phase-01e-live-stock-dashboard.md)、
@@ -124,8 +124,8 @@ Phase 2A 硬件基线已验收，不得破坏。
 | C2 真机下行 | `ACCEPTED`（2026-08-19） |
 | C3 BOOT 本地先停 barge-in | `ACCEPTED`（2026-08-20） |
 | C3 播放中 device-side VAD barge-in | 未证实；不得写成 PASS |
-| C4 same-session multi-turn | `AUTO-VERIFIED` / `HW-ACCEPTANCE-PENDING` |
-| C5 Bridge / Gateway / Wi-Fi recovery | `AUTO-VERIFIED` / `HW-ACCEPTANCE-PENDING` |
+| C4 same-session multi-turn | `HW-ACCEPTANCE-PENDING`（automatic verification: PASS） |
+| C5 Bridge / Gateway / Wi-Fi recovery | `HW-ACCEPTANCE-PENDING`（automatic verification: PASS） |
 | 「你好 EVA」WakeNet | `WAKE MODEL PENDING` |
 
 两个 VAD 场景不得混淆：
@@ -159,7 +159,7 @@ Phase 2A 硬件基线已验收，不得破坏。
 - 为什么当前不能执行：需要现场操作，且不得把未做真机写成 PASS。
 - 替代证据：host recovery backoff 测试、`tests.test_bridge_c5`、`tests.test_c5_live_watcher`、固件 bounded reconnect（无 `ESP.restart`）。
 - 真机步骤：见 `scripts/accept-hardware.sh` 提示；全程不重启 ESP32。
-- PASS：自动 hello、旧 cid/session 作废、可再 Talk、无 watchdog/panic。FAIL：必须重启 ESP32、永久 PLAY_ACTIVE/speaking、或 stale sessionId。
+- PASS：恢复后新 Talk session（sessionId ≠ 旧 stale）、新 speech_start、新 uplink、新 transcript.done；全程不重启 ESP32。仅 reconnect/hello 不得 PASS。FAIL：必须重启 ESP32、stale sessionId、或无新上行。
 
 ### STOCK_REGRESSION
 
