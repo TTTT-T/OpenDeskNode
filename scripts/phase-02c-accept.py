@@ -45,9 +45,21 @@ PROMPTS = {
         "最好再说第三句。"
     ),
     "C3_LOCAL_STOP": "EVA 播放时按 BOOT。听扬声器是否立即停止。",
-    "C5_BRIDGE_RECOVERY": "停止并重新启动 Voice Bridge。不要重启 ESP32。恢复后再按一次 BOOT 说话。",
-    "C5_GATEWAY_RECOVERY": "暂时停止 OpenClaw Gateway :18789，再启动。不要重启 ESP32。恢复后再说话。",
-    "C5_WIFI_RECOVERY": "临时断开 ESP32 Wi-Fi（或 AP），再恢复网络。不要重启 ESP32。恢复后再说话。",
+    "C5_BRIDGE_RECOVERY": (
+        "先按 BOOT 说一句话，建立旧 Talk session。等到 watcher 打印 "
+        "ARMED stale_session_id=... 之后，再停止并重新启动 Voice Bridge。"
+        "不要重启 ESP32。恢复后再按 BOOT 说话。"
+    ),
+    "C5_GATEWAY_RECOVERY": (
+        "先按 BOOT 说一句话，建立旧 Talk session。等到 watcher 打印 "
+        "ARMED stale_session_id=... 之后，再暂时停止 OpenClaw Gateway :18789 并启动。"
+        "不要重启 ESP32。恢复后再说话。"
+    ),
+    "C5_WIFI_RECOVERY": (
+        "先按 BOOT 说一句话，建立旧 Talk session。等到 watcher 打印 "
+        "ARMED stale_session_id=... 之后，再临时断开 ESP32 Wi-Fi 并恢复。"
+        "不要重启 ESP32。恢复后再说话。"
+    ),
     "STOCK_REGRESSION": "观察看板：stock task / Gateway 轮询仍正常，UI 不崩。",
     "VOICE_LONG_RUN": "本项不在本轮强制执行。",
     "WAKE_WORD": "WAKE MODEL PENDING：不要把未接入的「你好 EVA」写成 PASS。",

@@ -158,8 +158,8 @@ Phase 2A 硬件基线已验收，不得破坏。
 - 尚未执行：重启 Bridge、重启 OpenClaw Gateway、拔网再恢复。
 - 为什么当前不能执行：需要现场操作，且不得把未做真机写成 PASS。
 - 替代证据：host recovery backoff 测试、`tests.test_bridge_c5`、`tests.test_c5_live_watcher`、固件 bounded reconnect（无 `ESP.restart`）。
-- 真机步骤：见 `scripts/accept-hardware.sh` 提示；全程不重启 ESP32。
-- PASS：恢复后新 Talk session（sessionId ≠ 旧 stale）、新 speech_start、新 uplink、新 transcript.done；全程不重启 ESP32。仅 reconnect/hello 不得 PASS。FAIL：必须重启 ESP32、stale sessionId、或无新上行。
+- 真机步骤：先建立旧 Talk session → watcher 打印 ARMED → 再制造故障；见 `scripts/accept-hardware.sh`。全程不重启 ESP32。
+- PASS：watcher 先锁定旧 sessionId，恢复后 new_session_id ≠ stale_session_id，且有新 speech_start、uplink、transcript.done。仅 reconnect/hello 或 idle 后第一个 session 不得 PASS。FAIL：必须重启 ESP32、复用 stale sessionId、或无新上行。
 
 ### STOCK_REGRESSION
 

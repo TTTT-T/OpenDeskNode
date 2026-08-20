@@ -130,6 +130,36 @@ class C5WatcherTests(unittest.TestCase):
         verdict = watcher.step(state, usable(session="talk-2"), True, "wifi")
         self.assertTrue(verdict["ok"])
 
+    def test_idle_baseline_does_not_mark_recovered_session_stale(self):
+        state = watcher.init_state(snapshot(session=None, helloed=True, talk_connected=True))
+        self.assertFalse(state["armed"])
+        self.assertIsNone(state["stale_session_id"])
+        watcher.step(state, None, False, "bridge")
+        watcher.step(state, snapshot(session=None, helloed=True, conversations=1), True, "bridge")
+        verdict = watcher.step(state, usable(session="talk-new"), True, "bridge")
+        self.assertIsNone(verdict["stale_session_id"])
+        self.assertFalse(verdict["stale_session"])
+        self.assertFalse(verdict["armed"])
+        self.assertEqual(verdict["new_session_id"], "talk-new")
+        self.assertFalse(verdict["ok"])
+
+    def test_active_session_requires_new_session_not_equal_stale(self):
+        state = watcher.init_state(snapshot(session="talk-old"))
+        self.assertTrue(state["armed"])
+        watcher.step(state, None, False, "bridge")
+        watcher.step(state, snapshot(session=None, helloed=True), True, "bridge")
+        reused = watcher.step(state, usable(session="talk-old"), True, "bridge")
+        self.assertTrue(reused["armed"])
+        self.assertEqual(reused["stale_session_id"], "talk-old")
+        self.assertEqual(reused["new_session_id"], "talk-old")
+        self.assertTrue(reused["stale_session"])
+        self.assertFalse(reused["ok"])
+        replaced = watcher.step(state, usable(session="talk-new"), True, "bridge")
+        self.assertEqual(replaced["stale_session_id"], "talk-old")
+        self.assertEqual(replaced["new_session_id"], "talk-new")
+        self.assertNotEqual(replaced["new_session_id"], replaced["stale_session_id"])
+        self.assertTrue(replaced["ok"])
+
 
 if __name__ == "__main__":
     unittest.main()

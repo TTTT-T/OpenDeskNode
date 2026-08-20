@@ -60,9 +60,12 @@ def capture_baseline(snapshot: dict) -> dict:
 def init_state(pre_snapshot: dict | None = None) -> dict:
     stale = None
     if pre_snapshot:
-        stale = pre_snapshot.get("talk_session_id")
+        sid = pre_snapshot.get("talk_session_id")
+        if sid:
+            stale = sid
     return {
         "stale_session_id": stale,
+        "armed": bool(stale),
         "saw_outage": False,
         "recovered": False,
         "recovery_baseline": None,
@@ -82,12 +85,14 @@ def _disrupted(snapshot: dict, state: dict) -> bool:
 
 
 def note_reachable(state: dict, snapshot: dict) -> None:
-    if state.get("stale_session_id") is None:
+    if not state.get("saw_outage") and not state.get("armed"):
         sid = snapshot.get("talk_session_id")
         if sid:
             state["stale_session_id"] = sid
+            state["armed"] = True
     if not state.get("saw_outage") and _disrupted(snapshot, state):
-        state["saw_outage"] = True
+        if state.get("armed"):
+            state["saw_outage"] = True
         return
     if state.get("saw_outage") and not state.get("recovered"):
         if _disrupted(snapshot, state):
@@ -123,9 +128,12 @@ def evaluate(state: dict, snapshot: dict, case: str) -> dict:
     hello_only = bool(
         recovered and (snapshot or {}).get("helloed") and new_starts == 0 and not new_uplink
     )
+    armed = bool(state.get("armed") and stale)
     usable = bool(
         recovered
+        and armed
         and new_session
+        and sess != stale
         and new_creates >= 1
         and new_starts >= 1
         and new_uplink
@@ -135,6 +143,7 @@ def evaluate(state: dict, snapshot: dict, case: str) -> dict:
         "ok": usable,
         "case": case,
         "recovered": recovered,
+        "armed": armed,
         "saw_outage": bool(state.get("saw_outage")),
         "stale_session": stale_hit,
         "stale_session_id": stale,
@@ -191,6 +200,14 @@ def main() -> int:
             return 1
         note_unreachable(state)
 
+    armed_announced = bool(state.get("armed"))
+    if armed_announced:
+        print(
+            "C5 ARMED stale_session_id=%s — now cause the fault" % state.get("stale_session_id"),
+            file=sys.stderr,
+        )
+        sys.stderr.flush()
+
     while time.monotonic() - started < args.timeout:
         reachable = True
         body = None
@@ -199,6 +216,14 @@ def main() -> int:
         except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError):
             reachable = False
         verdict = step(state, body, reachable, args.case)
+        if state.get("armed") and not armed_announced:
+            print(
+                "C5 ARMED stale_session_id=%s — now cause the fault"
+                % state.get("stale_session_id"),
+                file=sys.stderr,
+            )
+            sys.stderr.flush()
+            armed_announced = True
         if len(metrics["samples"]) < MAX_SAMPLES:
             metrics["samples"].append(
                 {
@@ -216,6 +241,7 @@ def main() -> int:
             metrics["verdict"] = verdict
             metrics["state"] = {
                 "stale_session_id": state.get("stale_session_id"),
+                "armed": state.get("armed"),
                 "saw_outage": state.get("saw_outage"),
                 "recovered": state.get("recovered"),
             }
@@ -227,6 +253,7 @@ def main() -> int:
         metrics["verdict"] = evaluate(state, metrics.get("final") or {}, args.case)
         metrics["state"] = {
             "stale_session_id": state.get("stale_session_id"),
+            "armed": state.get("armed"),
             "saw_outage": state.get("saw_outage"),
             "recovered": state.get("recovered"),
         }
