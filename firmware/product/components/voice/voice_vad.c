@@ -71,3 +71,33 @@ bool voice_barge_should_stop(bool playing, bool holdoff_ok, bool speech)
 {
     return playing && holdoff_ok && speech;
 }
+
+bool voice_followup_holdoff_ok(int64_t now_us, int64_t listen_start_us)
+{
+    if (listen_start_us <= 0 || now_us < listen_start_us) {
+        return false;
+    }
+    return (now_us - listen_start_us) >= (int64_t)VOICE_FOLLOWUP_HOLDOFF_MS * 1000;
+}
+
+bool voice_followup_expired(int64_t now_us, int64_t listen_start_us)
+{
+    if (listen_start_us <= 0 || now_us < listen_start_us) {
+        return false;
+    }
+    return (now_us - listen_start_us) >= (int64_t)VOICE_FOLLOWUP_MS * 1000;
+}
+
+bool voice_followup_should_listen(bool listening, bool playing, bool speaking,
+                                  uint32_t conversation_id)
+{
+    return listening && !playing && !speaking && conversation_id != 0;
+}
+
+bool voice_followup_should_trigger(bool listening, bool playing, bool speaking,
+                                   uint32_t conversation_id, bool holdoff_ok,
+                                   bool speech)
+{
+    return voice_followup_should_listen(listening, playing, speaking, conversation_id) &&
+           holdoff_ok && speech;
+}

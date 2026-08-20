@@ -51,9 +51,11 @@ class C4MultiTurnTests(unittest.IsolatedAsyncioTestCase):
         await self.session.handle_binary(pcm_frame(self.cid, 0))
         await self.session.handle_text({"type": "speech_end", "conversation_id": self.cid})
         self.assertEqual(len(self.talk.created), 1)
+        self.assertEqual(self.talk.stats["create_ok"], 1)
         self.assertEqual(self.session.talk_session_id, self.sid)
         self.assertEqual(self.session.conversation_id, self.cid)
         self.assertEqual(self.session.metrics["speech_starts"], 2)
+        self.assertEqual(self.session.metrics["conversation_creates"], 1)
 
     async def test_open_while_active_is_busy(self):
         before = list(self.talk.created)
