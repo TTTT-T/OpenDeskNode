@@ -40,14 +40,14 @@ Realtime 回答经 ES8311 可听，frames_rx≈frames_play、underrun=0、drop=0
 **C3 已真机验收 PASS**（2026-08-20，见
 [phase-02c-c3-live-acceptance.md](phase-reports/phase-02c-c3-live-acceptance.md)）：
 播放中 BOOT 本地先停、`interrupt` / `cancelOutput`、同 cid 新上行。
-不得破坏 Phase 2A `audio_hw` / codec / I2S / AEC。C4/C5 尚未开始。
+不得破坏 Phase 2A `audio_hw` / codec / I2S / AEC。**C4 进行中**（一次进入会话后连续多轮，BOOT 只可替代首次 wake）。C5 不做。
 
 ### 验收标准
 
 C0 Bridge↔Talk（host fixture，已通）；C1 上行中文（**已验收 PASS**，2026-08-19）；
 C2 下行播放（**已验收 PASS**，2026-08-19）；C3 本地先停 barge-in
-（**已验收 PASS**，2026-08-20）；C4 一次唤醒多轮；C5 Bridge/Gateway/Wi-Fi
-恢复且不必重启 ESP32。C4–C5 尚未开始。
+（**已验收 PASS**，2026-08-20）；C4 一次唤醒多轮（进行中）；C5 Bridge/Gateway/Wi-Fi
+恢复且不必重启 ESP32（本轮不做）。
 
 ### 风险与回滚点
 
@@ -95,7 +95,7 @@ Phase 2A 硬件基线已验收，不得破坏。
 - Stock Gateway Phase 1D 已在 NAS/非交易时段验收；交易时段补测保留。
 - 语音软件主链 2B 已验证；Voice Bridge C0 已通，C1/C2 已真机验收 PASS
   （2026-08-19）；C3 本地先停 barge-in 已真机验收 PASS（2026-08-20）。
-  C4 尚未开始。
+  C4 进行中；C5 不做。
 
 历史阶段的范围/证据只在对应报告，不在本文件展开：
 [1E](phase-reports/phase-01e-live-stock-dashboard.md)、
@@ -115,7 +115,9 @@ Phase 2A 硬件基线已验收，不得破坏。
 
 ## 下一步
 
-1. **C4 一次唤醒多轮**（可用 BOOT 代替 wake）。C5 恢复不做。
+1. **C4 一次唤醒多轮**（进行中；BOOT 只可替代首次 wake，后续轮不得再按 BOOT，
+   不得重建 conversation / Talk session）。C5 恢复不做。
+   ESP32 本地 VAD 是否真机命中不作为 C4 阻塞项，也不得写成已证实事实。
 2. 运维（不进固件）：EVA 主模型 zai token；headless OAuth 续期。
 3. 旧遗留补测：下一交易时段行情推进；2A WAV 限速与 AEC 模式对比。
 

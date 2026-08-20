@@ -39,6 +39,7 @@ typedef enum {
 #define OPENED_BIT BIT3
 #define REJECT_BIT BIT4
 #define WS_CLOSED_BIT BIT5
+#define END_BIT BIT6
 
 typedef struct {
     EventGroupHandle_t events;
@@ -55,7 +56,10 @@ typedef struct {
     volatile bool barge_pending;
     volatile bool stop_play;
     volatile bool fade_in;
+    volatile bool listen_followup;
+    volatile bool await_reply;
     volatile int vol_req;
+    uint32_t turn_index;
     voice_vad_t vad;
     int32_t rx_seq_seen;
     uint32_t frames_sent;
@@ -80,6 +84,7 @@ typedef struct {
     int64_t first_frame_us;
     int64_t first_rx_us;
     int64_t play_start_us;
+    int64_t listen_start_us;
 } voice_rt_t;
 
 static voice_rt_t s_rt;
@@ -133,6 +138,9 @@ static void log_metrics(const char *label)
            label, s_rt.barge_pending, s_rt.accept_downlink,
            (unsigned long)s_rt.rx_drop_barge, (unsigned long)s_rt.overlap_residual,
            (unsigned long)s_rt.overlap_play);
+    printf("PHASE2C_C4 %s listen=%d await=%d turn=%lu cid=%lu\n",
+           label, s_rt.listen_followup, s_rt.await_reply,
+           (unsigned long)s_rt.turn_index, (unsigned long)s_rt.conversation_id);
     fflush(stdout);
 }
 
@@ -198,7 +206,23 @@ static void begin_playback(void)
     s_rt.first_rx_us = 0;
     s_rt.play_start_us = esp_timer_get_time();
     s_rt.vol_req = 70;
+    s_rt.listen_followup = false;
+    s_rt.await_reply = false;
     printf("PHASE2C_C2 playback_start cid=%lu\n", (unsigned long)s_rt.conversation_id);
+    fflush(stdout);
+}
+
+static void start_followup_listen(const char *why)
+{
+    if (s_rt.conversation_id == 0 || s_rt.speaking || s_rt.barge_pending) {
+        return;
+    }
+    s_rt.listen_followup = true;
+    s_rt.await_reply = false;
+    s_rt.listen_start_us = esp_timer_get_time();
+    voice_vad_reset(&s_rt.vad);
+    printf("PHASE2C_C4 listen_start why=%s cid=%lu turn=%lu\n", why,
+           (unsigned long)s_rt.conversation_id, (unsigned long)s_rt.turn_index);
     fflush(stdout);
 }
 
@@ -228,6 +252,11 @@ static void finish_playback(const char *why)
            (unsigned long)s_rt.rx_drop_barge);
     fflush(stdout);
     reset_playback();
+    if (strcmp(why, "drained") == 0) {
+        start_followup_listen("drained");
+    } else {
+        s_rt.listen_followup = false;
+    }
 }
 
 static void local_stop_playback(const char *why)
@@ -281,6 +310,10 @@ static void handle_control(const char *text, int len)
             s_rt.play = PLAY_DRAINING;
         }
     } else if (strcmp(type->valuestring, "conversation_end") == 0) {
+        s_rt.listen_followup = false;
+        s_rt.await_reply = false;
+        s_rt.turn_index = 0;
+        s_rt.conversation_id = 0;
         if (s_rt.play != PLAY_IDLE) {
             finish_playback("ended");
         }
@@ -300,6 +333,9 @@ static void handle_control(const char *text, int len)
         if (cJSON_IsString(code) && code->valuestring != NULL &&
             strcmp(code->valuestring, "unknown_conversation") == 0) {
             s_rt.conversation_id = 0;
+            s_rt.listen_followup = false;
+            s_rt.await_reply = false;
+            s_rt.turn_index = 0;
             if (s_rt.play != PLAY_IDLE) {
                 finish_playback("invalid");
             }
@@ -374,6 +410,9 @@ static void ws_event(void *arg, esp_event_base_t base, int32_t id, void *data)
     case WEBSOCKET_EVENT_ERROR:
         s_rt.helloed = false;
         s_rt.speaking = false;
+        s_rt.listen_followup = false;
+        s_rt.await_reply = false;
+        s_rt.turn_index = 0;
         /* Conversation state is bridge-session-scoped: a reconnect lands on a
          * fresh bridge session, so the next utterance must re-open. */
         s_rt.conversation_id = 0;
@@ -442,7 +481,7 @@ static bool ensure_connected(void)
         return false;
     }
     char hello[256];
-    if (voice_hello_json(hello, sizeof(hello), CONFIG_VOICE_DEVICE_ID, "phase-2c-c3") <= 0 ||
+    if (voice_hello_json(hello, sizeof(hello), CONFIG_VOICE_DEVICE_ID, "phase-2c-c4") <= 0 ||
         !send_text(hello)) {
         close_ws();
         return false;
@@ -503,6 +542,25 @@ static bool send_interrupt(const char *why)
     return true;
 }
 
+static void end_conversation_local(const char *reason)
+{
+    char msg[160];
+    if (s_rt.conversation_id == 0) {
+        return;
+    }
+    printf("PHASE2C_C4 conversation_end reason=%s cid=%lu turns=%lu\n", reason,
+           (unsigned long)s_rt.conversation_id, (unsigned long)s_rt.turn_index);
+    fflush(stdout);
+    if (voice_control_json(msg, sizeof(msg), "conversation_end", s_rt.conversation_id,
+                           reason) > 0) {
+        send_text(msg);
+    }
+    s_rt.conversation_id = 0;
+    s_rt.listen_followup = false;
+    s_rt.await_reply = false;
+    s_rt.turn_index = 0;
+}
+
 static bool run_utterance(void)
 {
     if (!ensure_connected()) {
@@ -532,6 +590,12 @@ static bool run_utterance(void)
         voice_txq_clear(s_rt.txq);
         xSemaphoreGive(s_rt.mu);
     }
+    s_rt.listen_followup = false;
+    s_rt.await_reply = false;
+    s_rt.turn_index++;
+    printf("PHASE2C_C4 turn_start n=%lu cid=%lu\n", (unsigned long)s_rt.turn_index,
+           (unsigned long)s_rt.conversation_id);
+    fflush(stdout);
     s_rt.seq = 0;
     s_rt.frames_sent = 0;
     s_rt.bytes_sent = 0;
@@ -602,6 +666,11 @@ static bool run_utterance(void)
                : -1,
            (long)((now - s_rt.speech_start_us) / 1000));
     fflush(stdout);
+    s_rt.await_reply = true;
+    printf("PHASE2C_C4 turn_end n=%lu cid=%lu frames=%lu\n",
+           (unsigned long)s_rt.turn_index, (unsigned long)s_rt.conversation_id,
+           (unsigned long)s_rt.frames_sent);
+    fflush(stdout);
     log_metrics("after_talk");
     return true;
 }
@@ -610,7 +679,12 @@ static void net_task(void *arg)
 {
     (void)arg;
     while (true) {
-        xEventGroupWaitBits(s_rt.events, TALK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+        EventBits_t bits = xEventGroupWaitBits(s_rt.events, TALK_BIT | END_BIT, pdTRUE,
+                                               pdFALSE, portMAX_DELAY);
+        if ((bits & END_BIT) != 0 && (bits & TALK_BIT) == 0) {
+            end_conversation_local("timeout");
+            continue;
+        }
         if (!network_is_connected()) {
             printf("PHASE2C_C1 talk_fail reason=wifi\n");
             fflush(stdout);
@@ -722,6 +796,8 @@ static void audio_task(void *arg)
             s_rt.speaking = false;
             s_rt.stop_play = false;
             s_rt.barge_pending = false;
+            s_rt.listen_followup = false;
+            s_rt.await_reply = false;
             if (s_rt.play != PLAY_IDLE) {
                 local_stop_playback("yield");
             } else {
@@ -786,8 +862,40 @@ static void audio_task(void *arg)
             } else if (!holdoff_ok) {
                 voice_vad_feed(&s_rt.vad, residual, s_rt.overlap_play, true);
             }
-        } else {
+        } else if (s_rt.listen_followup && play == PLAY_IDLE && !s_rt.speaking &&
+                   s_rt.conversation_id != 0) {
+            const int64_t listen_us = now_us - s_rt.listen_start_us;
+            if (listen_us >= (int64_t)VOICE_FOLLOWUP_MS * 1000) {
+                s_rt.listen_followup = false;
+                if (s_rt.events != NULL) {
+                    xEventGroupSetBits(s_rt.events, END_BIT);
+                }
+            } else if (listen_us >= (int64_t)VOICE_FOLLOWUP_HOLDOFF_MS * 1000) {
+                const uint32_t mag = voice_pcm_mean_abs(out, chunk);
+                if (voice_vad_feed(&s_rt.vad, mag, 0, false)) {
+                    s_rt.listen_followup = false;
+                    if (s_rt.events != NULL) {
+                        xEventGroupSetBits(s_rt.events, TALK_BIT);
+                    }
+                    printf("PHASE2C_C4 follow_up why=vad cid=%lu energy=%lu floor=%lu "
+                           "turn=%lu\n",
+                           (unsigned long)s_rt.conversation_id,
+                           (unsigned long)s_rt.vad.last_abs,
+                           (unsigned long)s_rt.vad.floor_abs,
+                           (unsigned long)s_rt.turn_index);
+                    fflush(stdout);
+                }
+            } else {
+                voice_vad_feed(&s_rt.vad, voice_pcm_mean_abs(out, chunk), 0, true);
+            }
+        } else if (!s_rt.listen_followup) {
             voice_vad_reset(&s_rt.vad);
+        }
+        if (s_rt.await_reply && play == PLAY_IDLE && !s_rt.speaking &&
+            !s_rt.listen_followup && s_rt.conversation_id != 0 && s_rt.speech_end_us > 0 &&
+            (now_us - s_rt.speech_end_us) >= (int64_t)VOICE_FOLLOWUP_WAIT_REPLY_MS * 1000) {
+            s_rt.await_reply = false;
+            start_followup_listen("no_reply");
         }
         if (play == PLAY_BUFFERING) {
             int ready = 0;
@@ -897,6 +1005,8 @@ esp_err_t voice_runtime_start(void)
         s_rt.rx_seq_seen = -1;
         s_rt.accept_downlink = true;
         s_rt.vol_req = -1;
+        s_rt.listen_followup = false;
+        s_rt.await_reply = false;
         voice_vad_init(&s_rt.vad);
     }
     ESP_RETURN_ON_FALSE(s_rt.events != NULL && s_rt.mu != NULL && s_rt.txq != NULL &&
@@ -907,7 +1017,7 @@ esp_err_t voice_runtime_start(void)
     ESP_RETURN_ON_FALSE(ok == pdPASS, ESP_FAIL, TAG, "audio task");
     ok = xTaskCreate(net_task, "voice_net", NET_TASK_STACK, NULL, NET_TASK_PRIO, NULL);
     ESP_RETURN_ON_FALSE(ok == pdPASS, ESP_FAIL, TAG, "net task");
-    ESP_LOGI(TAG, "C3 runtime ready uri=%s", CONFIG_VOICE_BRIDGE_URI);
+    ESP_LOGI(TAG, "C4 runtime ready uri=%s", CONFIG_VOICE_BRIDGE_URI);
     return ESP_OK;
 }
 

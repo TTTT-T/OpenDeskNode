@@ -219,10 +219,17 @@ static void test_barge_gate(void)
     CHECK_TRUE(!voice_barge_should_stop(true, true, false));
 }
 
+static void test_followup_window(void)
+{
+    CHECK_TRUE(VOICE_FOLLOWUP_MS == 12000);
+    CHECK_TRUE(VOICE_FOLLOWUP_HOLDOFF_MS == 400);
+    CHECK_TRUE(VOICE_FOLLOWUP_WAIT_REPLY_MS == 2500);
+}
+
 static void test_hello_json(void)
 {
     char buf[256];
-    CHECK_TRUE(voice_hello_json(buf, sizeof(buf), "opendesk-a", "phase-2c-c3") > 0);
+    CHECK_TRUE(voice_hello_json(buf, sizeof(buf), "opendesk-a", "phase-2c-c4") > 0);
     CHECK_TRUE(strstr(buf, "\"type\":\"hello\"") != NULL);
     CHECK_TRUE(strstr(buf, "pcm_s16le_16k_mono") != NULL);
     CHECK_TRUE(strstr(buf, "appendAudio") == NULL);
@@ -241,6 +248,7 @@ int main(void)
     test_vad_requires_consecutive_speech_frames();
     test_vad_echo_floor_blocks_residual();
     test_barge_gate();
+    test_followup_window();
     test_hello_json();
     if (failures) {
         printf("VOICE_PROTOCOL_HOST_TESTS_FAILED %d\n", failures);

@@ -164,6 +164,8 @@ class GatewayTalkClient:
             "append_fail": 0,
             "cancel_ok": 0,
             "cancel_fail": 0,
+            "create_ok": 0,
+            "create_fail": 0,
             # Entries: {"text", "sessionId", "talkType", "eventSeq", "ts"}.
             "transcripts": [],
             "texts": [],
@@ -264,6 +266,7 @@ class GatewayTalkClient:
             },
         )
         if not response.get("ok"):
+            self.stats["create_fail"] += 1
             error = response.get("error") or {}
             raise RuntimeError(
                 "talk.session.create failed: %s"
@@ -271,6 +274,7 @@ class GatewayTalkClient:
             )
         payload = response.get("payload") or {}
         session_id = payload.get("sessionId")
+        self.stats["create_ok"] += 1
         if isinstance(session_id, str) and session_id:
             await self._wait_ready(session_id, timeout=12)
         return payload

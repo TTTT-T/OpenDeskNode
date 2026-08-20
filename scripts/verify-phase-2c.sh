@@ -23,10 +23,13 @@ required_files=(
   "$ROOT_DIR/firmware/product/components/audio/include/audio_owner.h"
   "$ROOT_DIR/tests/test_bridge_c1.py"
   "$ROOT_DIR/tests/test_bridge_c3.py"
+  "$ROOT_DIR/tests/test_bridge_c4.py"
   "$ROOT_DIR/tests/test_c2_live_watcher.py"
   "$ROOT_DIR/tests/test_c3_live_watcher.py"
+  "$ROOT_DIR/tests/test_c4_live_watcher.py"
   "$ROOT_DIR/scripts/phase-02c-c2-live.py"
   "$ROOT_DIR/scripts/phase-02c-c3-live.py"
+  "$ROOT_DIR/scripts/phase-02c-c4-live.py"
   "$voice_dir/voice_vad.c"
   "$voice_dir/include/voice_vad.h"
 )
@@ -47,14 +50,18 @@ rg -q 'voice_rxq_push_pcm' "$voice_dir/voice_protocol.c"
 rg -q 'playback_start' "$voice_dir/voice_runtime.c"
 rg -q 'PHASE2C_C2' "$voice_dir/voice_runtime.c"
 rg -q 'PHASE2C_C3' "$voice_dir/voice_runtime.c"
+rg -q 'PHASE2C_C4' "$voice_dir/voice_runtime.c"
 rg -q 'interrupt' "$voice_dir/voice_runtime.c"
 rg -q 'voice_vad_feed' "$voice_dir/voice_runtime.c"
 rg -q 'local_stop_playback' "$voice_dir/voice_runtime.c"
+rg -q 'listen_followup' "$voice_dir/voice_runtime.c"
+rg -q 'VOICE_FOLLOWUP_MS' "$voice_dir/include/voice_vad.h"
 rg -q '_commit_turn' "$ROOT_DIR/bridge/session.py"
 rg -q 'suppress_downlink' "$ROOT_DIR/bridge/session.py"
 rg -q 'dropped_after_interrupt' "$ROOT_DIR/bridge/session.py"
 rg -q 'commit_silence_ms' "$ROOT_DIR/bridge/session.py"
 rg -q 'playback_starts' "$ROOT_DIR/bridge/session.py"
+rg -q 'speech_starts' "$ROOT_DIR/bridge/session.py"
 
 if rg -n 'talk\.session|openai\.com|OPENAI_API_KEY|api\.tenclass\.net|xiaozhi\.me' \
   "$voice_dir/voice_runtime.c" "$voice_dir/voice_protocol.c" \
@@ -81,12 +88,14 @@ fi
 PYTHONPYCACHEPREFIX="$PYTHON_CACHE" "$PYTHON_BIN" -m unittest \
   tests.test_bridge_protocol tests.test_bridge_audio tests.test_bridge_c0 \
   tests.test_bridge_config   tests.test_bridge_c1 tests.test_c1_live_watcher \
-  tests.test_c2_live_watcher tests.test_bridge_c3 tests.test_c3_live_watcher -v
+  tests.test_c2_live_watcher tests.test_bridge_c3 tests.test_c3_live_watcher \
+  tests.test_bridge_c4 tests.test_c4_live_watcher -v
 PYTHONPYCACHEPREFIX="$PYTHON_CACHE" "$PYTHON_BIN" -m py_compile \
   bridge/__init__.py bridge/protocol.py bridge/audio.py bridge/config.py \
   bridge/talk.py bridge/session.py bridge/app.py bridge/__main__.py \
   scripts/phase-02c-c0-live.py scripts/phase-02c-c1-live.py \
-  scripts/phase-02c-c2-live.py scripts/phase-02c-c3-live.py
+  scripts/phase-02c-c2-live.py scripts/phase-02c-c3-live.py \
+  scripts/phase-02c-c4-live.py
 
 work_dir="$(mktemp -d)"
 trap 'rm -rf "$work_dir"' EXIT
@@ -97,4 +106,4 @@ cc -std=c99 -Wall -Werror -Wextra -I"$voice_dir/include" \
 "$work_dir/test_voice_protocol"
 
 git diff --check
-echo "phase-2c C3 host verification: OK"
+echo "phase-2c C4 host verification: OK"

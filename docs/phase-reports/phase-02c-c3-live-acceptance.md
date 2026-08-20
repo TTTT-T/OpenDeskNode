@@ -15,16 +15,20 @@
 
 ## C3 真机打断证据
 
-用户确认喇叭立即停。Watcher 一轮（cid=6）：
+用户确认喇叭立即停。正式矩阵写「用户插话」；本轮验收成立的是 **BOOT
+本地先停**（语音 VAD 真机 onset=0，未当作 PASS 依据）。
+
+Watcher 一轮（cid=6）：
 
 | 侧 | 证据 |
 | --- | --- |
 | 用户 | 播放中按 BOOT，扬声器马上停 |
 | 设备 | `play_done why=button` 后 `interrupt_sent why=utterance`；同 cid |
 | Bridge watcher | ok=true；same_conversation；new_interrupts=1；new_cancel_ok=1；uplink 247→500 |
-| Talk | `cancelOutput` ok；转写「一个,能听到我说话吗?」 |
+| Talk | `cancelOutput` ok。转写「一个,能听到我说话吗?」出现在 interrupt
+  **之前**，是本轮原句，不是打断后的新 turn |
 
-后续同会话用户再说「不用再说了」，播放正常 drain，未再误触发自打断。
+之后另开 cid=7（「不用再说了」等）正常 drain，残差未再误触发自打断。
 
 AEC 重叠残差约 2–9，play_rms 可达 2000–4000：回声远低于人声阈值，未出现
 C2 担心的残差自打断。
@@ -48,6 +52,8 @@ C2 担心的残差自打断。
 
 ## 未尽事项（不阻塞 C3）
 
-- 语音 VAD 打断未在真机命中；产品打断以 BOOT 为准。C4 可再调。
-- 一次唤醒多轮（C4）、恢复矩阵（C5）未做。
+- 后续真人无按键插话可打断 EVA；当前自动打断更可能由 Realtime server VAD
+  触发。ESP32 本地 VAD 是否真机命中只保留日志观察，**不得写成已证实事实**，
+  也不作为 C4 阻塞项。
+- 一次唤醒多轮（C4）进行中；恢复矩阵（C5）未做。
 - 2A selftest 本轮未重跑。

@@ -153,5 +153,5 @@ queue depth、underrun/overrun。
 4. C2：**已真机验收 PASS**（2026-08-19，见
    `phase-reports/phase-02c-c2-live-acceptance.md`）。C3 **已真机验收
    PASS**（2026-08-20，见 `phase-reports/phase-02c-c3-live-acceptance.md`）。
-   → C4 多轮 → C5 恢复。
+   → **C4 多轮进行中** → C5 恢复（本轮不做）。
 5. Wake PoC 不阻塞；做不完拆 Phase 2C.x。

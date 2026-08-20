@@ -66,6 +66,7 @@ class DeviceSession:
             "uplink_peak": 0,
             "interrupts": 0,
             "dropped_after_interrupt": 0,
+            "speech_starts": 0,
             # Session-scoped Realtime user transcripts (talk transcript.* events
             # that passed the sessionId filter); each entry is
             # {"text", "talkType", "ts"}.
@@ -110,6 +111,7 @@ class DeviceSession:
             return
         if kind == "speech_start":
             self._require_conversation(message)
+            self.metrics["speech_starts"] = int(self.metrics.get("speech_starts") or 0) + 1
             self.uplink_seq_seen = -1
             self._up.reset()
             return
