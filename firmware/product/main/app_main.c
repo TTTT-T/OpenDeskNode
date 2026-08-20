@@ -63,6 +63,7 @@ static void on_wifi_status_changed(network_status_t status)
 {
     ESP_LOGI(TAG, "Wi-Fi status: %s", network_status_text(status));
     display_set_wifi_status(network_status_text(status));
+    voice_runtime_on_network(status == NETWORK_STATUS_CONNECTED);
 }
 
 void app_main(void)

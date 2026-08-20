@@ -18,7 +18,9 @@
 #include "freertos/task.h"
 #include "network.h"
 #include "voice_protocol.h"
+#include "voice_recovery.h"
 #include "voice_vad.h"
+#include "voice_wake.h"
 
 static const char *TAG = "voice";
 
@@ -78,6 +80,19 @@ typedef struct {
     uint32_t rx_dup;
     uint32_t rx_gap;
     uint32_t rx_reorder;
+    uint32_t ws_reconnects;
+    uint32_t conversation_creates;
+    uint32_t session_invalidations;
+    uint32_t followup_starts;
+    uint32_t followup_vad_hits;
+    uint32_t followup_timeouts;
+    uint32_t interrupts_sent;
+    uint32_t playback_starts;
+    uint32_t playback_ends;
+    uint32_t audio_yields;
+    uint32_t audio_reacquires;
+    uint32_t wifi_losses;
+    uint32_t hello_ok_count;
     int64_t talk_req_us;
     int64_t speech_start_us;
     int64_t speech_end_us;
@@ -85,6 +100,8 @@ typedef struct {
     int64_t first_rx_us;
     int64_t play_start_us;
     int64_t listen_start_us;
+    voice_recovery_t recovery;
+    voice_wake_t wake;
 } voice_rt_t;
 
 static voice_rt_t s_rt;
@@ -138,9 +155,31 @@ static void log_metrics(const char *label)
            label, s_rt.barge_pending, s_rt.accept_downlink,
            (unsigned long)s_rt.rx_drop_barge, (unsigned long)s_rt.overlap_residual,
            (unsigned long)s_rt.overlap_play);
-    printf("PHASE2C_C4 %s listen=%d await=%d turn=%lu cid=%lu\n",
+    printf("PHASE2C_C4 %s listen=%d await=%d turn=%lu cid=%lu follow_start=%lu "
+           "follow_vad=%lu follow_to=%lu\n",
            label, s_rt.listen_followup, s_rt.await_reply,
-           (unsigned long)s_rt.turn_index, (unsigned long)s_rt.conversation_id);
+           (unsigned long)s_rt.turn_index, (unsigned long)s_rt.conversation_id,
+           (unsigned long)s_rt.followup_starts, (unsigned long)s_rt.followup_vad_hits,
+           (unsigned long)s_rt.followup_timeouts);
+    printf("PHASE2C_METRICS ws_reconnects=%lu conv_create=%lu invalid=%lu "
+           "up_frames=%lu up_bytes=%lu up_drop=%lu down_frames=%lu down_drop=%lu "
+           "play_start=%lu play_end=%lu underrun=%lu gap=%lu dup=%lu reorder=%lu "
+           "interrupts=%lu follow_start=%lu follow_vad=%lu follow_to=%lu turns=%lu "
+           "yield=%lu reacquire=%lu wifi_loss=%lu hello_ok=%lu heap=%u psram=%u "
+           "audio=%d net=%d\n",
+           (unsigned long)s_rt.ws_reconnects, (unsigned long)s_rt.conversation_creates,
+           (unsigned long)s_rt.session_invalidations, (unsigned long)s_rt.frames_sent,
+           (unsigned long)s_rt.bytes_sent, (unsigned long)dropped,
+           (unsigned long)s_rt.frames_rx, (unsigned long)rx_drop,
+           (unsigned long)s_rt.playback_starts, (unsigned long)s_rt.playback_ends,
+           (unsigned long)s_rt.play_underrun, (unsigned long)s_rt.rx_gap,
+           (unsigned long)s_rt.rx_dup, (unsigned long)s_rt.rx_reorder,
+           (unsigned long)s_rt.interrupts_sent, (unsigned long)s_rt.followup_starts,
+           (unsigned long)s_rt.followup_vad_hits, (unsigned long)s_rt.followup_timeouts,
+           (unsigned long)s_rt.turn_index, (unsigned long)s_rt.audio_yields,
+           (unsigned long)s_rt.audio_reacquires, (unsigned long)s_rt.wifi_losses,
+           (unsigned long)s_rt.hello_ok_count, (unsigned)internal.total_free_bytes,
+           (unsigned)ps_free, 1, 1);
     fflush(stdout);
 }
 
@@ -208,6 +247,7 @@ static void begin_playback(void)
     s_rt.vol_req = 70;
     s_rt.listen_followup = false;
     s_rt.await_reply = false;
+    s_rt.playback_starts++;
     printf("PHASE2C_C2 playback_start cid=%lu\n", (unsigned long)s_rt.conversation_id);
     fflush(stdout);
 }
@@ -220,6 +260,7 @@ static void start_followup_listen(const char *why)
     s_rt.listen_followup = true;
     s_rt.await_reply = false;
     s_rt.listen_start_us = esp_timer_get_time();
+    s_rt.followup_starts++;
     voice_vad_reset(&s_rt.vad);
     printf("PHASE2C_C4 listen_start why=%s cid=%lu turn=%lu\n", why,
            (unsigned long)s_rt.conversation_id, (unsigned long)s_rt.turn_index);
@@ -251,12 +292,48 @@ static void finish_playback(const char *why)
            (unsigned long)s_rt.overlap_residual, (unsigned long)s_rt.overlap_play,
            (unsigned long)s_rt.rx_drop_barge);
     fflush(stdout);
+    s_rt.playback_ends++;
     reset_playback();
     if (strcmp(why, "drained") == 0) {
         start_followup_listen("drained");
     } else {
         s_rt.listen_followup = false;
     }
+}
+
+static void invalidate_session(const char *why, voice_fault_t fault)
+{
+    s_rt.speaking = false;
+    s_rt.listen_followup = false;
+    s_rt.await_reply = false;
+    s_rt.turn_index = 0;
+    if (s_rt.conversation_id != 0 || s_rt.play != PLAY_IDLE || s_rt.helloed) {
+        s_rt.session_invalidations++;
+    }
+    s_rt.conversation_id = 0;
+    if (!voice_recovery_keeps_hello(fault)) {
+        s_rt.helloed = false;
+    }
+    if (s_rt.play != PLAY_IDLE) {
+        finish_playback(why);
+    } else {
+        reset_playback();
+    }
+    if (s_rt.mu != NULL && xSemaphoreTake(s_rt.mu, pdMS_TO_TICKS(20)) == pdTRUE) {
+        if (s_rt.txq != NULL) {
+            voice_txq_clear(s_rt.txq);
+        }
+        if (s_rt.rxq != NULL) {
+            voice_rxq_clear(s_rt.rxq);
+        }
+        xSemaphoreGive(s_rt.mu);
+    }
+    voice_vad_reset(&s_rt.vad);
+    voice_recovery_on_fault(&s_rt.recovery, fault);
+    voice_wake_arm(&s_rt.wake);
+    printf("PHASE2C_C5 invalidate why=%s fault=%s hello=%d\n", why, voice_fault_name(fault),
+           s_rt.helloed);
+    fflush(stdout);
 }
 
 static void local_stop_playback(const char *why)
@@ -310,18 +387,16 @@ static void handle_control(const char *text, int len)
             s_rt.play = PLAY_DRAINING;
         }
     } else if (strcmp(type->valuestring, "conversation_end") == 0) {
-        s_rt.listen_followup = false;
-        s_rt.await_reply = false;
-        s_rt.turn_index = 0;
-        s_rt.conversation_id = 0;
-        if (s_rt.play != PLAY_IDLE) {
-            finish_playback("ended");
-        }
+        invalidate_session("ended", VOICE_FAULT_SESSION_CLOSED);
     } else if (strcmp(type->valuestring, "conversation_opened") == 0) {
         const cJSON *cid = cJSON_GetObjectItemCaseSensitive(root, "conversation_id");
         if (cJSON_IsNumber(cid)) {
             s_rt.conversation_id = (uint32_t)cid->valuedouble;
         }
+        s_rt.conversation_creates++;
+        s_rt.recovery.conversation_valid = true;
+        s_rt.recovery.conversation_id = s_rt.conversation_id;
+        voice_wake_disarm(&s_rt.wake);
         xEventGroupSetBits(s_rt.events, OPENED_BIT);
     } else if (strcmp(type->valuestring, "conversation_reject") == 0 ||
                strcmp(type->valuestring, "hello_error") == 0) {
@@ -332,13 +407,7 @@ static void handle_control(const char *text, int len)
         const cJSON *code = cJSON_GetObjectItemCaseSensitive(root, "code");
         if (cJSON_IsString(code) && code->valuestring != NULL &&
             strcmp(code->valuestring, "unknown_conversation") == 0) {
-            s_rt.conversation_id = 0;
-            s_rt.listen_followup = false;
-            s_rt.await_reply = false;
-            s_rt.turn_index = 0;
-            if (s_rt.play != PLAY_IDLE) {
-                finish_playback("invalid");
-            }
+            invalidate_session("invalid", VOICE_FAULT_UNKNOWN_CONVERSATION);
             ESP_LOGW(TAG, "conversation invalidated by bridge; will re-open");
         }
     }
@@ -408,19 +477,8 @@ static void ws_event(void *arg, esp_event_base_t base, int32_t id, void *data)
     case WEBSOCKET_EVENT_DISCONNECTED:
     case WEBSOCKET_EVENT_CLOSED:
     case WEBSOCKET_EVENT_ERROR:
-        s_rt.helloed = false;
-        s_rt.speaking = false;
-        s_rt.listen_followup = false;
-        s_rt.await_reply = false;
-        s_rt.turn_index = 0;
-        /* Conversation state is bridge-session-scoped: a reconnect lands on a
-         * fresh bridge session, so the next utterance must re-open. */
-        s_rt.conversation_id = 0;
-        if (s_rt.play != PLAY_IDLE) {
-            finish_playback("disconnect");
-        } else {
-            reset_playback();
-        }
+        invalidate_session("disconnect", id == WEBSOCKET_EVENT_ERROR ? VOICE_FAULT_TRANSPORT
+                                                                     : VOICE_FAULT_WS_CLOSE);
         xEventGroupSetBits(s_rt.events, WS_CLOSED_BIT);
         break;
     case WEBSOCKET_EVENT_DATA:
@@ -481,7 +539,7 @@ static bool ensure_connected(void)
         return false;
     }
     char hello[256];
-    if (voice_hello_json(hello, sizeof(hello), CONFIG_VOICE_DEVICE_ID, "phase-2c-c4") <= 0 ||
+    if (voice_hello_json(hello, sizeof(hello), CONFIG_VOICE_DEVICE_ID, "phase-2c-c5") <= 0 ||
         !send_text(hello)) {
         close_ws();
         return false;
@@ -535,6 +593,7 @@ static bool send_interrupt(const char *why)
         !send_text(msg)) {
         return false;
     }
+    s_rt.interrupts_sent++;
     printf("PHASE2C_C3 interrupt_sent cid=%lu why=%s residual=%lu play_rms=%lu\n",
            (unsigned long)s_rt.conversation_id, why,
            (unsigned long)s_rt.overlap_residual, (unsigned long)s_rt.overlap_play);
@@ -559,6 +618,7 @@ static void end_conversation_local(const char *reason)
     s_rt.listen_followup = false;
     s_rt.await_reply = false;
     s_rt.turn_index = 0;
+    voice_wake_arm(&s_rt.wake);
 }
 
 static bool run_utterance(void)
@@ -679,19 +739,47 @@ static void net_task(void *arg)
 {
     (void)arg;
     while (true) {
-        EventBits_t bits = xEventGroupWaitBits(s_rt.events, TALK_BIT | END_BIT, pdTRUE,
-                                               pdFALSE, portMAX_DELAY);
+        if (!network_is_connected()) {
+            if (s_rt.ws != NULL || s_rt.helloed || s_rt.conversation_id != 0) {
+                s_rt.wifi_losses++;
+                invalidate_session("wifi", VOICE_FAULT_WIFI_LOST);
+                close_ws();
+            }
+            xEventGroupWaitBits(s_rt.events, TALK_BIT | END_BIT, pdTRUE, pdFALSE,
+                                pdMS_TO_TICKS(500));
+            continue;
+        }
+        if (!s_rt.helloed) {
+            if (ensure_connected()) {
+                voice_recovery_on_hello_ok(&s_rt.recovery);
+                s_rt.hello_ok_count++;
+                if (s_rt.recovery.reconnects > 1) {
+                    s_rt.ws_reconnects = s_rt.recovery.reconnects - 1;
+                }
+                printf("PHASE2C_C5 hello_ok reconnects=%lu backoff=%lu\n",
+                       (unsigned long)s_rt.ws_reconnects,
+                       (unsigned long)s_rt.recovery.last_backoff_ms);
+                fflush(stdout);
+            } else {
+                const uint32_t wait_ms = voice_recovery_next_backoff_ms(&s_rt.recovery);
+                printf("PHASE2C_C5 reconnect_wait ms=%lu fault=bridge_gone\n",
+                       (unsigned long)wait_ms);
+                fflush(stdout);
+                vTaskDelay(pdMS_TO_TICKS(wait_ms));
+                continue;
+            }
+        }
+        EventBits_t bits = xEventGroupWaitBits(
+            s_rt.events, TALK_BIT | END_BIT | WS_CLOSED_BIT, pdTRUE, pdFALSE, pdMS_TO_TICKS(1000));
         if ((bits & END_BIT) != 0 && (bits & TALK_BIT) == 0) {
             end_conversation_local("timeout");
+            voice_wake_arm(&s_rt.wake);
             continue;
         }
-        if (!network_is_connected()) {
-            printf("PHASE2C_C1 talk_fail reason=wifi\n");
-            fflush(stdout);
-            continue;
+        if ((bits & TALK_BIT) != 0) {
+            s_rt.talk_req_us = esp_timer_get_time();
+            run_utterance();
         }
-        s_rt.talk_req_us = esp_timer_get_time();
-        run_utterance();
     }
 }
 
@@ -793,6 +881,7 @@ static void audio_task(void *arg)
     log_metrics("audio_ready");
     while (true) {
         if (audio_owner_should_yield(AUDIO_OWNER_VOICE)) {
+            s_rt.audio_yields++;
             s_rt.speaking = false;
             s_rt.stop_play = false;
             s_rt.barge_pending = false;
@@ -813,6 +902,7 @@ static void audio_task(void *arg)
             while (!establish_audio_path(&aec)) {
                 vTaskDelay(pdMS_TO_TICKS(500));
             }
+            s_rt.audio_reacquires++;
             chunk = aec_get_chunksize(aec);
             if (chunk <= 0 || chunk > (int)buf_samples) {
                 chunk = 256;
@@ -862,18 +952,23 @@ static void audio_task(void *arg)
             } else if (!holdoff_ok) {
                 voice_vad_feed(&s_rt.vad, residual, s_rt.overlap_play, true);
             }
-        } else if (s_rt.listen_followup && play == PLAY_IDLE && !s_rt.speaking &&
-                   s_rt.conversation_id != 0) {
-            const int64_t listen_us = now_us - s_rt.listen_start_us;
-            if (listen_us >= (int64_t)VOICE_FOLLOWUP_MS * 1000) {
+        } else if (voice_followup_should_listen(s_rt.listen_followup, play == PLAY_ACTIVE ||
+                                                                        play == PLAY_DRAINING ||
+                                                                        play == PLAY_BUFFERING,
+                                               s_rt.speaking, s_rt.conversation_id)) {
+            if (voice_followup_expired(now_us, s_rt.listen_start_us)) {
                 s_rt.listen_followup = false;
+                s_rt.followup_timeouts++;
                 if (s_rt.events != NULL) {
                     xEventGroupSetBits(s_rt.events, END_BIT);
                 }
-            } else if (listen_us >= (int64_t)VOICE_FOLLOWUP_HOLDOFF_MS * 1000) {
+            } else if (voice_followup_holdoff_ok(now_us, s_rt.listen_start_us)) {
                 const uint32_t mag = voice_pcm_mean_abs(out, chunk);
-                if (voice_vad_feed(&s_rt.vad, mag, 0, false)) {
+                if (voice_followup_should_trigger(
+                        true, false, false, s_rt.conversation_id, true,
+                        voice_vad_feed(&s_rt.vad, mag, 0, false))) {
                     s_rt.listen_followup = false;
+                    s_rt.followup_vad_hits++;
                     if (s_rt.events != NULL) {
                         xEventGroupSetBits(s_rt.events, TALK_BIT);
                     }
@@ -1008,6 +1103,8 @@ esp_err_t voice_runtime_start(void)
         s_rt.listen_followup = false;
         s_rt.await_reply = false;
         voice_vad_init(&s_rt.vad);
+        voice_recovery_init(&s_rt.recovery);
+        voice_wake_init(&s_rt.wake, VOICE_WAKE_SRC_NONE);
     }
     ESP_RETURN_ON_FALSE(s_rt.events != NULL && s_rt.mu != NULL && s_rt.txq != NULL &&
                             s_rt.rxq != NULL,
@@ -1017,12 +1114,14 @@ esp_err_t voice_runtime_start(void)
     ESP_RETURN_ON_FALSE(ok == pdPASS, ESP_FAIL, TAG, "audio task");
     ok = xTaskCreate(net_task, "voice_net", NET_TASK_STACK, NULL, NET_TASK_PRIO, NULL);
     ESP_RETURN_ON_FALSE(ok == pdPASS, ESP_FAIL, TAG, "net task");
-    ESP_LOGI(TAG, "C4 runtime ready uri=%s", CONFIG_VOICE_BRIDGE_URI);
+    ESP_LOGI(TAG, "C5 runtime ready uri=%s wake=%s", CONFIG_VOICE_BRIDGE_URI,
+             voice_wake_model_status());
     return ESP_OK;
 }
 
 void voice_runtime_request_talk(void)
 {
+    voice_wake_feed_manual(&s_rt.wake);
     if (s_rt.play != PLAY_IDLE) {
         s_rt.stop_play = true;
         s_rt.barge_pending = true;
@@ -1034,5 +1133,26 @@ void voice_runtime_request_talk(void)
     if (s_rt.events != NULL) {
         xEventGroupSetBits(s_rt.events, TALK_BIT);
         ESP_LOGI(TAG, "manual talk requested play=%d", (int)s_rt.play);
+    }
+}
+
+void voice_runtime_on_wake(void)
+{
+    if (s_rt.conversation_id != 0) {
+        ESP_LOGI(TAG, "wake ignored; follow-up uses VAD cid=%lu",
+                 (unsigned long)s_rt.conversation_id);
+        return;
+    }
+    if (!voice_wake_feed_mock(&s_rt.wake, true) && s_rt.wake.source != VOICE_WAKE_SRC_NONE) {
+        return;
+    }
+    voice_wake_take(&s_rt.wake);
+    voice_runtime_request_talk();
+}
+
+void voice_runtime_on_network(bool connected)
+{
+    if (!connected && s_rt.events != NULL) {
+        xEventGroupSetBits(s_rt.events, WS_CLOSED_BIT);
     }
 }

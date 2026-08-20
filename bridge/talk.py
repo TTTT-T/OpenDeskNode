@@ -46,12 +46,26 @@ class FakeTalkClient:
         self.appended: list[tuple[str, bytes]] = []
         self.cancelled: list[tuple[str, str]] = []
         self.closed: list[str] = []
+        self.stale: set[str] = set()
+        self.fail_create = False
+        self._connected = True
         self._listener: Optional[TalkListener] = None
         self._n = 0
+        self.stats = {
+            "create_ok": 0,
+            "create_fail": 0,
+            "append_ok": 0,
+            "append_fail": 0,
+            "cancel_ok": 0,
+            "cancel_fail": 0,
+            "disconnects": 0,
+            "reconnects": 0,
+            "session_invalidations": 0,
+        }
 
     @property
     def connected(self) -> bool:
-        return True
+        return self._connected
 
     def set_listener(self, listener: Optional[TalkListener]) -> None:
         self._listener = listener
@@ -64,9 +78,13 @@ class FakeTalkClient:
             await result
 
     async def create_session(self) -> dict[str, Any]:
+        if not self._connected or self.fail_create:
+            self.stats["create_fail"] += 1
+            raise RuntimeError("talk unavailable")
         self._n += 1
         session_id = "talk-fake-%d" % self._n
         self.created.append(session_id)
+        self.stats["create_ok"] += 1
         await self._emit(
             {
                 "type": "ready",
@@ -84,7 +102,11 @@ class FakeTalkClient:
     async def append_audio(
         self, session_id: str, pcm24: bytes, timestamp: Optional[float] = None
     ) -> None:
+        if not self._connected or session_id in self.stale:
+            self.stats["append_fail"] += 1
+            raise RuntimeError("stale session")
         self.appended.append((session_id, pcm24))
+        self.stats["append_ok"] += 1
         await self._emit(
             {
                 "type": "inputAudio",
@@ -116,7 +138,11 @@ class FakeTalkClient:
         )
 
     async def cancel_output(self, session_id: str, reason: str = "barge-in") -> None:
+        if not self._connected or session_id in self.stale:
+            self.stats["cancel_fail"] += 1
+            raise RuntimeError("stale session")
         self.cancelled.append((session_id, reason))
+        self.stats["cancel_ok"] += 1
         await self._emit(
             {
                 "type": "clear",
@@ -126,8 +152,30 @@ class FakeTalkClient:
             }
         )
 
+    async def drop(self) -> None:
+        self._connected = False
+        self.stats["disconnects"] += 1
+        sid = self.created[-1] if self.created else None
+        if sid:
+            self.stale.add(sid)
+            self.stats["session_invalidations"] += 1
+        await self._emit(
+            {
+                "type": "close",
+                "sessionId": sid,
+                "reason": "disconnected",
+                "talkEvent": {"type": "session.closed"},
+            }
+        )
+
+    async def recover(self) -> None:
+        self._connected = True
+        self.fail_create = False
+        self.stats["reconnects"] += 1
+
     async def close_session(self, session_id: str) -> None:
         self.closed.append(session_id)
+        self.stale.add(session_id)
         await self._emit(
             {
                 "type": "close",
@@ -164,12 +212,15 @@ class GatewayTalkClient:
             "append_fail": 0,
             "cancel_ok": 0,
             "cancel_fail": 0,
-            "create_ok": 0,
-            "create_fail": 0,
-            # Entries: {"text", "sessionId", "talkType", "eventSeq", "ts"}.
-            "transcripts": [],
-            "texts": [],
-        }
+        "create_ok": 0,
+        "create_fail": 0,
+        "disconnects": 0,
+        "reconnects": 0,
+        "session_invalidations": 0,
+        # Entries: {"text", "sessionId", "talkType", "eventSeq", "ts"}.
+        "transcripts": [],
+        "texts": [],
+    }
         self._ready_sessions: set[str] = set()
         self._ready_waiters: dict[str, asyncio.Event] = {}
 
@@ -251,10 +302,24 @@ class GatewayTalkClient:
 
     async def close(self) -> None:
         self._connected = False
+        for future in list(self._pending.values()):
+            if not future.done():
+                future.set_exception(RuntimeError("talk disconnected"))
+        self._pending.clear()
         if self._reader is not None:
             self._reader.cancel()
+            self._reader = None
         if self._ws is not None:
-            await self._ws.close()
+            try:
+                await self._ws.close()
+            except Exception:
+                LOGGER.warning("Talk websocket close failed")
+            self._ws = None
+
+    async def reconnect(self) -> None:
+        await self.close()
+        self.stats["reconnects"] = int(self.stats.get("reconnects") or 0) + 1
+        await self.connect()
 
     async def create_session(self) -> dict[str, Any]:
         response = await self._request(
@@ -353,7 +418,7 @@ class GatewayTalkClient:
                 break
 
     async def _request(self, method: str, params: dict[str, Any]) -> dict[str, Any]:
-        if self._ws is None:
+        if self._ws is None or not self._connected:
             raise RuntimeError("Talk client not connected")
         req_id = str(uuid.uuid4())
         future: asyncio.Future = asyncio.get_running_loop().create_future()
@@ -417,4 +482,22 @@ class GatewayTalkClient:
             return
         except Exception:
             LOGGER.exception("Talk read loop failed")
-            self._connected = False
+            await self._notify_disconnect()
+
+    async def _notify_disconnect(self) -> None:
+        self._connected = False
+        self.stats["disconnects"] = int(self.stats.get("disconnects") or 0) + 1
+        if self._listener is None:
+            return
+        try:
+            result = self._listener(
+                {
+                    "type": "close",
+                    "reason": "disconnected",
+                    "talkEvent": {"type": "session.closed"},
+                }
+            )
+            if asyncio.iscoroutine(result):
+                await result
+        except Exception:
+            LOGGER.warning("talk disconnect notify failed", exc_info=True)

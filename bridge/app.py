@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+import asyncio
 import json
 import logging
 from typing import Any, Optional
@@ -47,9 +48,42 @@ def create_app(
                     except Exception:
                         LOGGER.exception("Talk connect failed; FakeTalk fallback")
                         state["talk"] = FakeTalkClient()
+        async def talk_supervisor() -> None:
+            delay = 1.0
+            while True:
+                client = state.get("talk")
+                reconnect = getattr(client, "reconnect", None)
+                if client is None or reconnect is None or getattr(client, "connected", True):
+                    delay = 1.0
+                    await asyncio.sleep(1)
+                    continue
+                session = state.get("current_session")
+                if session is not None and getattr(session, "talk_session_id", None):
+                    try:
+                        await session.invalidate("backend_unavailable")
+                    except Exception:
+                        LOGGER.warning("session invalidate on Talk drop failed", exc_info=True)
+                try:
+                    await reconnect()
+                    delay = 1.0
+                    LOGGER.info("Talk reconnect ok")
+                except Exception:
+                    LOGGER.warning("Talk reconnect failed; waiting %.0fs", delay)
+                    await asyncio.sleep(delay)
+                    delay = min(delay * 2, 60)
+
+        supervisor = None
+        if getattr(state.get("talk"), "reconnect", None) is not None:
+            supervisor = asyncio.create_task(talk_supervisor())
         try:
             yield
         finally:
+            if supervisor is not None:
+                supervisor.cancel()
+                try:
+                    await supervisor
+                except (asyncio.CancelledError, Exception):
+                    pass
             client = state.get("talk")
             closer = getattr(client, "close", None)
             if closer is not None:
@@ -139,6 +173,16 @@ def create_app(
                 "metrics": dict(getattr(current, "metrics", None) or state.get("last_metrics") or {}),
                 "conversations": state["conversations"],
                 "commit_silence_ms": runtime.commit_silence_ms,
+                "recovery": {
+                    "talk_connected": bool(getattr(client, "connected", False)),
+                    "talk_reconnects": (getattr(client, "stats", {}) or {}).get("reconnects", 0),
+                    "talk_disconnects": (getattr(client, "stats", {}) or {}).get("disconnects", 0),
+                    "session_invalidations": (
+                        (getattr(current, "metrics", {}) or {}).get("session_invalidations")
+                        or (state.get("last_metrics") or {}).get("session_invalidations")
+                        or 0
+                    ),
+                },
             }
         )
 

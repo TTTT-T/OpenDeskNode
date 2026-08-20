@@ -72,6 +72,9 @@ class DeviceSession:
             # {"text", "talkType", "ts"}.
             "user_transcripts": [],
             "last_user_transcript": None,
+            "session_invalidations": 0,
+            "conversation_creates": 0,
+            "conversation_started_ts": None,
         }
         self.suppress_downlink = False
         self._uplink_pcm = bytearray()
@@ -172,11 +175,17 @@ class DeviceSession:
         self._uplink_pcm.extend(pcm16)
         pcm24 = self._up.process(pcm16)
         if pcm24:
-            await self.talk.append_audio(
-                self.talk_session_id,
-                pcm24,
-                timestamp=parsed["ts_ms"] / 1000.0,
-            )
+            try:
+                await self.talk.append_audio(
+                    self.talk_session_id,
+                    pcm24,
+                    timestamp=parsed["ts_ms"] / 1000.0,
+                )
+            except Exception:
+                LOGGER.warning("Talk append failed; invalidating session")
+                self.metrics["dropped_old"] += 1
+                await self.invalidate("backend_unavailable")
+                return
 
     @staticmethod
     def _text_of(event: dict[str, Any], talk_event: dict[str, Any]) -> Optional[str]:
@@ -242,14 +251,7 @@ class DeviceSession:
             return
         if kind == "close" or talk_type == "session.closed":
             if self.talk_session_id:
-                self.talk_session_id = None
-                await self._send_text(
-                    control(
-                        "conversation_end",
-                        conversation_id=self.conversation_id,
-                        reason="completed",
-                    )
-                )
+                await self.invalidate("session_closed")
 
     async def _open_conversation(self) -> None:
         if self.talk_session_id:
@@ -274,6 +276,8 @@ class DeviceSession:
             )
             return
         self.talk_session_id = created.get("sessionId")
+        self.metrics["conversation_creates"] = int(self.metrics.get("conversation_creates") or 0) + 1
+        self.metrics["conversation_started_ts"] = time.time()
         self._up.reset()
         self._down.reset()
         self._down_frames.reset()
@@ -332,17 +336,29 @@ class DeviceSession:
                 control("playback_end", conversation_id=self.conversation_id)
             )
         if self.talk_session_id:
-            await self.talk.cancel_output(self.talk_session_id, "barge-in")
+            try:
+                await self.talk.cancel_output(self.talk_session_id, "barge-in")
+            except Exception:
+                LOGGER.warning("Talk cancelOutput failed")
+
+    async def invalidate(self, reason: str) -> None:
+        self.metrics["session_invalidations"] = int(self.metrics.get("session_invalidations") or 0) + 1
+        await self._end_conversation(reason, notify_device=True)
 
     async def _end_conversation(self, reason: str, notify_device: bool) -> None:
         talk_id = self.talk_session_id
         self.talk_session_id = None
         self.playing = False
+        self.suppress_downlink = False
         self._up.reset()
         self._down.reset()
         self._down_frames.reset()
+        self.metrics["conversation_started_ts"] = None
         if talk_id:
-            await self.talk.close_session(talk_id)
+            try:
+                await self.talk.close_session(talk_id)
+            except Exception:
+                LOGGER.warning("Talk close failed during end")
         if notify_device:
             await self._send_text(
                 control(
