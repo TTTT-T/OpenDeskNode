@@ -2,7 +2,9 @@
 #include <string.h>
 
 #include "voice_protocol.h"
+#include "voice_recovery.h"
 #include "voice_vad.h"
+#include "voice_wake.h"
 
 static int failures;
 
@@ -226,6 +228,79 @@ static void test_followup_window(void)
     CHECK_TRUE(VOICE_FOLLOWUP_WAIT_REPLY_MS == 2500);
 }
 
+static void test_followup_listen_is_not_playback_barge_in(void)
+{
+    const int64_t start = 1000000;
+    CHECK_TRUE(!voice_followup_holdoff_ok(start + 399000, start));
+    CHECK_TRUE(voice_followup_holdoff_ok(start + 400000, start));
+    CHECK_TRUE(!voice_followup_expired(start + 11999000, start));
+    CHECK_TRUE(voice_followup_expired(start + 12000000, start));
+    CHECK_TRUE(voice_followup_should_listen(true, false, false, 5));
+    CHECK_TRUE(!voice_followup_should_listen(true, true, false, 5));
+    CHECK_TRUE(!voice_followup_should_listen(true, false, true, 5));
+    CHECK_TRUE(!voice_followup_should_listen(true, false, false, 0));
+    CHECK_TRUE(voice_followup_should_trigger(true, false, false, 5, true, true));
+    CHECK_TRUE(!voice_followup_should_trigger(true, true, false, 5, true, true));
+    CHECK_TRUE(!voice_barge_should_stop(false, true, true));
+    CHECK_TRUE(voice_barge_should_stop(true, true, true));
+}
+
+static void test_recovery_backoff_is_bounded(void)
+{
+    voice_recovery_t r;
+    voice_recovery_init(&r);
+    uint32_t prev = 0;
+    for (int i = 0; i < 12; i++) {
+        uint32_t delay = voice_recovery_next_backoff_ms(&r);
+        CHECK_TRUE(delay >= VOICE_RECOVERY_BACKOFF_MIN_MS);
+        CHECK_TRUE(delay <= VOICE_RECOVERY_BACKOFF_MAX_MS);
+        CHECK_TRUE(delay >= prev);
+        prev = delay;
+    }
+    CHECK_TRUE(prev == VOICE_RECOVERY_BACKOFF_MAX_MS);
+    voice_recovery_on_hello_ok(&r);
+    CHECK_TRUE(r.helloed);
+    CHECK_TRUE(r.attempt == 0);
+    CHECK_TRUE(voice_recovery_next_backoff_ms(&r) == VOICE_RECOVERY_BACKOFF_MIN_MS);
+}
+
+static void test_recovery_fault_clears_session(void)
+{
+    voice_recovery_t r;
+    voice_recovery_init(&r);
+    r.conversation_id = 9;
+    r.speaking = true;
+    r.play_active = true;
+    r.helloed = true;
+    voice_recovery_on_fault(&r, VOICE_FAULT_WS_CLOSE);
+    CHECK_TRUE(r.conversation_id == 0);
+    CHECK_TRUE(!r.speaking);
+    CHECK_TRUE(!r.play_active);
+    CHECK_TRUE(!r.helloed);
+    CHECK_TRUE(r.invalidations == 1);
+    r.helloed = true;
+    voice_recovery_on_fault(&r, VOICE_FAULT_UNKNOWN_CONVERSATION);
+    CHECK_TRUE(r.helloed);
+    CHECK_TRUE(voice_recovery_keeps_hello(VOICE_FAULT_SESSION_CLOSED));
+    CHECK_TRUE(!voice_recovery_keeps_hello(VOICE_FAULT_WIFI_LOST));
+}
+
+static void test_wake_mock_and_manual_are_decoupled(void)
+{
+    voice_wake_t w;
+    voice_wake_init(&w, VOICE_WAKE_SRC_MOCK);
+    CHECK_TRUE(!voice_wake_feed_mock(&w, false));
+    CHECK_TRUE(voice_wake_feed_mock(&w, true));
+    CHECK_TRUE(voice_wake_take(&w));
+    CHECK_TRUE(!w.armed);
+    CHECK_TRUE(!voice_wake_feed_mock(&w, true));
+    voice_wake_arm(&w);
+    CHECK_TRUE(voice_wake_feed_manual(&w));
+    CHECK_TRUE(w.manual_hits == 1);
+    CHECK_TRUE(w.mock_hits == 1);
+    CHECK_TRUE(strstr(voice_wake_model_status(), "PENDING") != NULL);
+}
+
 static void test_hello_json(void)
 {
     char buf[256];
@@ -249,6 +324,10 @@ int main(void)
     test_vad_echo_floor_blocks_residual();
     test_barge_gate();
     test_followup_window();
+    test_followup_listen_is_not_playback_barge_in();
+    test_recovery_backoff_is_bounded();
+    test_recovery_fault_clears_session();
+    test_wake_mock_and_manual_are_decoupled();
     test_hello_json();
     if (failures) {
         printf("VOICE_PROTOCOL_HOST_TESTS_FAILED %d\n", failures);
